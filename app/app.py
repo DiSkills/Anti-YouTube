@@ -1,0 +1,25 @@
+from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.db import AsyncSession, engine, Base, get_session
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[''],
+    allow_credentials=True,
+    allow_methods=[''],
+    allow_headers=['*'],
+)
+
+
+@app.on_event('startup')
+async def startup():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+
+@app.get('/')
+async def get(session: AsyncSession = Depends(get_session)):
+    print(session)
