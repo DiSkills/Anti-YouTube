@@ -3,7 +3,7 @@ from typing import List, Optional, Generic, TypeVar, Type
 import sqlalchemy
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
-from sqlalchemy import select, delete, update
+from sqlalchemy import select, delete, update, exists
 from sqlalchemy.ext.asyncio import AsyncSession
 
 ModelType = TypeVar('ModelType', bound=sqlalchemy.Table)
@@ -27,9 +27,9 @@ class CRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             :rtype: ModelType
         """
         query = await db.execute(select(self.model).filter_by(**kwargs))
-        return query.first()
+        return query.scalars().first()
 
-    async def exists(self,  db: AsyncSession, **kwargs):
+    async def exists(self,  db: AsyncSession, **kwargs) -> bool:
         """
             Exists
             :param db: DB
@@ -37,7 +37,7 @@ class CRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             :param kwargs: kwargs
             :return: Exists?
         """
-        query = await db.execute(select(self.model).filter_by(**kwargs).exists())
+        query = await db.execute(exists(select(self.model.id).filter_by(**kwargs)).select())
         return query.scalar()
 
     async def page_exists(self, db: AsyncSession, skip: int, limit: int):
@@ -51,7 +51,8 @@ class CRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             :type limit: int
             :return: Page exists?
         """
-        return await db.execute(select(self.model).order_by(self.model.id.desc()).offset(skip).limit(limit))
+        query = await db.execute(exists(select(self.model).order_by(self.model.id.desc()).offset(skip).limit(limit)).select())
+        return query.scalar()
 
     async def all(self, db: AsyncSession,  skip: int = 0, limit: int = 100) -> List[ModelType]:
         """
@@ -93,7 +94,7 @@ class CRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             :param kwargs: kwargs
             :return: None
         """
-        return await db.execute(delete(self.model).filter_by(**kwargs))
+        await db.execute(delete(self.model).filter_by(**kwargs))
 
     async def update(self, db: AsyncSession,  pk: int, schema: UpdateSchemaType, **kwargs) -> ModelType:
         """
@@ -111,4 +112,5 @@ class CRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         update_data = {**schema.dict(skip_defaults=True), **kwargs}
         query = update(self.model).filter(self.model.id == pk).values(**update_data)
         query.execution_options(synchronize_session="fetch")
-        return await db.execute(query)
+        await db.execute(query)
+        return await self.get(db, id=pk)
