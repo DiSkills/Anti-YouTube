@@ -1,14 +1,16 @@
 import asyncio
 from unittest import TestCase
 
+import jwt
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from app.app import app
-from app.auth.api import register, activate
+from app.auth.api import register, activate, login
 from app.auth.crud import user_crud, verification_crud
-from app.auth.schemas import RegisterUser, VerificationUUID
-from app.config import API_V1_URL
+from app.auth.schemas import RegisterUser, VerificationUUID, LoginUser
+from app.auth.tokens import ALGORITHM
+from app.config import API_V1_URL, SECRET_KEY
 from app.db import Base, engine, AsyncSession
 
 
@@ -181,3 +183,44 @@ class AuthTestCase(TestCase):
         self.assertEqual(response, {'msg': 'Account has been is activated'})
         self.assertEqual(self.loop(user_crud.get(self.session, id=1)).__dict__['is_active'], True)
         self.assertEqual(len(self.loop(verification_crud.all(self.session))), 0)
+
+    def test_login_request(self):
+        self.client.post(self.url + '/register', json=self.data)
+
+        response = self.client.post(self.url + '/login', json={'username': 'test', 'password': 'test1234'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['token_type'], 'bearer')
+        self.assertEqual('access_token' and 'refresh_token' in response.json(), True)
+        self.assertEqual(
+            jwt.decode(response.json()['access_token'], SECRET_KEY, algorithms=[ALGORITHM])['user_id'], 1
+        )
+        self.assertEqual(
+            jwt.decode(response.json()['refresh_token'], SECRET_KEY, algorithms=[ALGORITHM])['username'], 'test'
+        )
+
+        response = self.client.post(self.url + '/login', json={'username': 'admin', 'password': 'test1234'})
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'detail': 'User not found'})
+
+        response = self.client.post(self.url + '/login', json={'username': 'test', 'password': 'test'})
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'detail': 'Password mismatch'})
+
+    def test_login(self):
+        self.client.post(self.url + '/register', json=self.data)
+
+        response = self.loop(login(LoginUser(username='test', password='test1234')))
+        self.assertEqual(response['token_type'], 'bearer')
+        self.assertEqual('access_token' and 'refresh_token' in response, True)
+        self.assertEqual(
+            jwt.decode(response['access_token'], SECRET_KEY, algorithms=[ALGORITHM])['user_id'], 1
+        )
+        self.assertEqual(
+            jwt.decode(response['refresh_token'], SECRET_KEY, algorithms=[ALGORITHM])['username'], 'test'
+        )
+
+        with self.assertRaises(HTTPException) as error:
+            self.loop(login(LoginUser(username='admin', password='test1234')))
+
+        with self.assertRaises(HTTPException) as error:
+            self.loop(login(LoginUser(username='test', password='test')))
