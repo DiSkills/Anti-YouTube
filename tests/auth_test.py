@@ -5,9 +5,9 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from app.app import app
-from app.auth.api import register
+from app.auth.api import register, activate
 from app.auth.crud import user_crud, verification_crud
-from app.auth.schemas import RegisterUser
+from app.auth.schemas import RegisterUser, VerificationUUID
 from app.config import API_V1_URL
 from app.db import Base, engine, AsyncSession
 
@@ -137,3 +137,47 @@ class AuthTestCase(TestCase):
                     )
                 )
             )
+
+    def test_activate_request(self):
+        self.client.post(self.url + '/register', json=self.data)
+
+        verification = self.loop(verification_crud.get(self.session, user_id=1)).__dict__
+
+        self.assertEqual(len(self.loop(verification_crud.all(self.session))), 1)
+
+        self.assertEqual(self.loop(user_crud.get(self.session, id=1)).__dict__['is_active'], False)
+
+        response = self.client.post(self.url + '/activate', json={'uuid': 'uuid'})
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'detail': 'Verification not found'})
+        self.assertEqual(self.loop(user_crud.get(self.session, id=1)).__dict__['is_active'], False)
+        self.assertEqual(len(self.loop(verification_crud.all(self.session))), 1)
+
+        response = self.client.post(self.url + '/activate', json={'uuid': verification['uuid']})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'msg': 'Account has been is activated'})
+        self.assertEqual(self.loop(user_crud.get(self.session, id=1)).__dict__['is_active'], True)
+        self.assertEqual(len(self.loop(verification_crud.all(self.session))), 0)
+
+        response = self.client.post(self.url + '/activate', json={'uuid': verification['uuid']})
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'detail': 'Verification not found'})
+
+    def test_activate(self):
+        self.client.post(self.url + '/register', json=self.data)
+
+        verification = self.loop(verification_crud.get(self.session, user_id=1)).__dict__
+
+        self.assertEqual(len(self.loop(verification_crud.all(self.session))), 1)
+
+        self.assertEqual(self.loop(user_crud.get(self.session, id=1)).__dict__['is_active'], False)
+
+        with self.assertRaises(HTTPException) as error:
+            self.loop(activate(VerificationUUID(uuid='uuid')))
+        self.assertEqual(self.loop(user_crud.get(self.session, id=1)).__dict__['is_active'], False)
+        self.assertEqual(len(self.loop(verification_crud.all(self.session))), 1)
+
+        response = self.loop(activate(VerificationUUID(uuid=verification['uuid'])))
+        self.assertEqual(response, {'msg': 'Account has been is activated'})
+        self.assertEqual(self.loop(user_crud.get(self.session, id=1)).__dict__['is_active'], True)
+        self.assertEqual(len(self.loop(verification_crud.all(self.session))), 0)
