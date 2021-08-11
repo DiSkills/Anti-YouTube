@@ -1,7 +1,7 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.db import AsyncSession, engine, Base, get_session
+from app.db import engine, Base, async_session
 
 app = FastAPI()
 
@@ -21,5 +21,7 @@ async def startup():
 
 
 @app.get('/')
-async def get(session: AsyncSession = Depends(get_session)):
-    print(session)
+async def get():
+    async with async_session() as session:
+        async with session.begin():
+            pass

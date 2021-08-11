@@ -16,8 +16,3 @@ class ModelMixin(object):
         return cls.__name__.lower()
 
     id: int = Column(Integer, primary_key=True)
-
-
-async def get_session() -> AsyncSession:
-    async with async_session() as session:
-        yield session
