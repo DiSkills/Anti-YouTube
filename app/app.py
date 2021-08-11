@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.db import engine, Base, async_session
+from app.config import TESTS, API_V1_URL
+from app.db import engine, Base
 
 app = FastAPI()
 
@@ -17,11 +18,10 @@ app.add_middleware(
 @app.on_event('startup')
 async def startup():
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        if not int(TESTS):
+            await conn.run_sync(Base.metadata.create_all)
 
 
-@app.get('/')
-async def get():
-    async with async_session() as session:
-        async with session.begin():
-            pass
+from app.routers import routers
+
+app.include_router(routers, prefix=API_V1_URL)

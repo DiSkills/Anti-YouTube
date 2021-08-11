@@ -3,7 +3,7 @@ from emails.template import JinjaTemplate
 
 import logging
 
-from config import (
+from app.config import (
     EMAILS_ENABLED,
     EMAILS_FROM_EMAIL,
     EMAILS_FROM_NAME,
