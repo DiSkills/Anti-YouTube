@@ -52,3 +52,12 @@ class VerificationUUID(BaseModel):
     """
 
     uuid: str
+
+
+class UserUpdate(BaseModel):
+    """
+        Update user active
+        :type is_active: bool
+    """
+
+    is_active: bool = True
