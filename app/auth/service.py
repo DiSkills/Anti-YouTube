@@ -5,9 +5,10 @@ from fastapi import status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.crud import user_crud, verification_crud
-from app.auth.schemas import RegisterUser, VerificationUUID, UserUpdate
-from app.auth.security import get_password_hash
+from app.auth.schemas import RegisterUser, VerificationUUID, UserUpdate, LoginUser
+from app.auth.security import get_password_hash, verify_password
 from app.auth.send_emails import send_new_account_email
+from app.auth.tokens import create_token
 
 
 async def register(db: AsyncSession, schema: RegisterUser) -> Dict[str, str]:
@@ -41,7 +42,7 @@ async def register(db: AsyncSession, schema: RegisterUser) -> Dict[str, str]:
     return {'msg': 'Send email for activate account'}
 
 
-async def activate(db: AsyncSession, schema: VerificationUUID):
+async def activate(db: AsyncSession, schema: VerificationUUID) -> Dict[str, str]:
     """
         Activation account
         :param db: DB
@@ -65,3 +66,27 @@ async def activate(db: AsyncSession, schema: VerificationUUID):
     await verification_crud.remove(db, id=verification['id'])
 
     return {'msg': 'Account has been is activated'}
+
+
+async def login(db: AsyncSession, schema: LoginUser) -> Dict[str, str]:
+    """
+        Login
+        :param db: DB
+        :type db: AsyncSession
+        :param schema: Login data
+        :type schema: LoginUser
+        :return: Tokens
+        :rtype: dict
+        :raise HTTPException 400: User not exist or password mismatch
+    """
+
+    if not await user_crud.exists(db, username=schema.username):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='User not found')
+
+    user = await user_crud.get(db, username=schema.username)
+    user = user.__dict__
+
+    if not verify_password(schema.password, user['password']):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Password mismatch')
+
+    return create_token(user['id'], user['username'])

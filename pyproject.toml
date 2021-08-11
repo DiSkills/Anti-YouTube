@@ -15,6 +15,7 @@ bcrypt = "^3.2.0"
 passlib = "^1.7.4"
 emails = "^0.6"
 coverage = "^5.5"
+PyJWT = "^2.1.0"
 
 [tool.poetry.dev-dependencies]
 

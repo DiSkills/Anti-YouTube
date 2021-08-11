@@ -61,3 +61,39 @@ class UserUpdate(BaseModel):
     """
 
     is_active: bool = True
+
+
+class LoginUser(BaseModel):
+    """
+        Login user
+        :type username: str
+        :type password: str
+    """
+
+    username: str
+    password: str
+
+
+class RefreshToken(BaseModel):
+    """
+        Refresh token
+        :type refresh_token: str
+    """
+    refresh_token: str
+
+
+class AccessToken(BaseModel):
+    """
+        Access token
+        :type access_token: str
+    """
+    access_token: str
+
+
+class Tokens(RefreshToken, AccessToken):
+    """
+        Login tokens
+        :type token_type: str
+    """
+
+    token_type: str
