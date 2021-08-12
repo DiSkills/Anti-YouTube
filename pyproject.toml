@@ -8,7 +8,7 @@ authors = ["_Counter021_"]
 python = "^3.8"
 fastapi = {extras = ["all"], version = "^0.68.0"}
 psycopg2-binary = "^2.9.1"
-SQLAlchemy = "^1.4.22"
+SQLAlchemy = {extras = ["asyncio"], version = "^1.4.22"}
 asyncpg = "^0.24.0"
 pydantic = {extras = ["email"], version = "^1.8.2"}
 bcrypt = "^3.2.0"

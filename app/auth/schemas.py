@@ -97,3 +97,12 @@ class Tokens(RefreshToken, AccessToken):
     """
 
     token_type: str
+
+
+class TokenPayload(BaseModel):
+    """
+        Token payload
+        :type user_id: int
+    """
+
+    user_id: int

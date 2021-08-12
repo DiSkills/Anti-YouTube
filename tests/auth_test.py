@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from app.app import app
 from app.auth.api import register, activate, login, refresh
 from app.auth.crud import user_crud, verification_crud
+from app.auth.permission import is_authenticated, is_active, is_superuser
 from app.auth.schemas import RegisterUser, VerificationUUID, LoginUser, RefreshToken
 from app.auth.tokens import ALGORITHM
 from app.config import API_V1_URL, SECRET_KEY
@@ -50,6 +51,31 @@ class AuthTestCase(TestCase):
     def tearDown(self) -> None:
         self.loop(self.session.close())
         self.loop(drop_all())
+
+    def test_permission(self):
+        with self.assertRaises(HTTPException) as error:
+            self.loop(is_authenticated('test'))
+
+        self.client.post(self.url + '/register', json=self.data)
+        tokens = self.client.post(self.url + '/login', json={'username': 'test', 'password': 'test1234'})
+        response = self.loop(is_authenticated(tokens.json()['access_token']))
+        self.assertEqual(response.id, 1)
+
+        with self.assertRaises(HTTPException) as error:
+            self.loop(is_authenticated(tokens.json()['refresh_token']))
+
+        with self.assertRaises(HTTPException) as error:
+            self.loop(is_active(self.loop(is_authenticated(tokens.json()['access_token']))))
+
+        verification = self.loop(verification_crud.get(self.session, user_id=1)).__dict__
+        self.client.post(self.url + '/activate', json={'uuid': verification['uuid']})
+
+        response = self.loop(is_active(self.loop(is_authenticated(tokens.json()['access_token']))))
+        self.assertEqual(response.id, 1)
+
+        with self.assertRaises(HTTPException) as error:
+            self.loop(is_superuser(self.loop(is_active(self.loop(is_authenticated(tokens.json()['access_token']))))))
+
 
     def test_register_request(self):
 

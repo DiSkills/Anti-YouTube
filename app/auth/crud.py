@@ -1,13 +1,14 @@
 from app.CRUD import CRUD
 from app.auth.models import User, Verification
+from app.auth.schemas import RegisterUser, UserUpdate, VerificationUUID
 
 
-class UserCRUD(CRUD):
+class UserCRUD(CRUD[User, RegisterUser, UserUpdate]):
     """ User CRUD """
     pass
 
 
-class VerificationCRUD(CRUD):
+class VerificationCRUD(CRUD[Verification, VerificationUUID, VerificationUUID]):
     """ Verification CRUD """
     pass
 

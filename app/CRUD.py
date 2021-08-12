@@ -109,7 +109,7 @@ class CRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             :return: Updated model
             :rtype: ModelType
         """
-        update_data = {**schema.dict(skip_defaults=True), **kwargs}
+        update_data = {**schema.dict(skip_defaults=False), **kwargs}
         query = update(self.model).filter(self.model.id == pk).values(**update_data)
         query.execution_options(synchronize_session="fetch")
         await db.execute(query)
