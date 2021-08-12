@@ -5,10 +5,31 @@ from fastapi import status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.crud import user_crud, verification_crud
-from app.auth.schemas import RegisterUser, VerificationUUID, UserUpdate, LoginUser
+from app.auth.schemas import RegisterUser, VerificationUUID, UserUpdate, LoginUser, RefreshToken
 from app.auth.security import get_password_hash, verify_password
 from app.auth.send_emails import send_new_account_email
-from app.auth.tokens import create_token
+from app.auth.tokens import create_token, verify_refresh_token
+
+
+async def refresh(db: AsyncSession, schema: RefreshToken):
+    """
+        Refresh token
+        :param db: DB
+        :type db: AsyncSession
+        :param schema: Refresh token
+        :type schema: RefreshToken
+        :return: Access token
+        :rtype: dict
+        :raise HTTPException 400: User not found
+    """
+
+    username = verify_refresh_token(schema.refresh_token)
+
+    if not await user_crud.exists(db, username=username):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='User not found')
+
+    user = await user_crud.get(db, username=username)
+    return create_token(user.id, username)
 
 
 async def register(db: AsyncSession, schema: RegisterUser) -> Dict[str, str]:

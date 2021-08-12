@@ -6,9 +6,9 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from app.app import app
-from app.auth.api import register, activate, login
+from app.auth.api import register, activate, login, refresh
 from app.auth.crud import user_crud, verification_crud
-from app.auth.schemas import RegisterUser, VerificationUUID, LoginUser
+from app.auth.schemas import RegisterUser, VerificationUUID, LoginUser, RefreshToken
 from app.auth.tokens import ALGORITHM
 from app.config import API_V1_URL, SECRET_KEY
 from app.db import Base, engine, AsyncSession
@@ -224,3 +224,63 @@ class AuthTestCase(TestCase):
 
         with self.assertRaises(HTTPException) as error:
             self.loop(login(LoginUser(username='test', password='test')))
+
+    def test_refresh_token_request(self):
+        self.client.post(self.url + '/register', json=self.data)
+
+        tokens = self.client.post(self.url + '/login', json={'username': 'test', 'password': 'test1234'})
+
+        response = self.client.post(self.url + '/refresh', json={'refresh_token': tokens.json()['refresh_token']})
+        self.assertEqual('access_token' in response.json(), True)
+        self.assertEqual(response.status_code, 200)
+
+        self.assertEqual(
+            jwt.decode(response.json()['access_token'], SECRET_KEY, algorithms=[ALGORITHM])['user_id'], 1
+        )
+
+        response = self.client.post(self.url + '/refresh', json={'refresh_token': 'token'})
+        self.assertEqual(response.json(), {'detail': 'Token lifetime ended'})
+        self.assertEqual(response.status_code, 401)
+
+        response = self.client.post(self.url + '/refresh', json={'refresh_token': tokens.json()['access_token']})
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'detail': 'Refresh token not found'})
+
+        verification = self.loop(verification_crud.get(self.session, user_id=1))
+
+        self.client.post(self.url + '/activate', json={'uuid': verification.uuid})
+
+        self.tearDown()
+        self.setUp()
+
+        response = self.client.post(self.url + '/refresh', json={'refresh_token': tokens.json()['refresh_token']})
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'detail': 'User not found'})
+
+    def test_refresh_token(self):
+        self.client.post(self.url + '/register', json=self.data)
+
+        tokens = self.client.post(self.url + '/login', json={'username': 'test', 'password': 'test1234'})
+
+        response = self.loop(refresh(RefreshToken(refresh_token=tokens.json()['refresh_token'])))
+        self.assertEqual('access_token' in response, True)
+
+        self.assertEqual(
+            jwt.decode(response['access_token'], SECRET_KEY, algorithms=[ALGORITHM])['user_id'], 1
+        )
+
+        with self.assertRaises(HTTPException) as error:
+            self.loop(refresh(RefreshToken(refresh_token='token')))
+
+        with self.assertRaises(HTTPException) as error:
+            self.loop(refresh(RefreshToken(refresh_token=tokens.json()['access_token'])))
+
+        verification = self.loop(verification_crud.get(self.session, user_id=1))
+
+        self.client.post(self.url + '/activate', json={'uuid': verification.uuid})
+
+        self.tearDown()
+        self.setUp()
+
+        with self.assertRaises(HTTPException) as error:
+            self.loop(refresh(RefreshToken(refresh_token=tokens.json()['refresh_token'])))
