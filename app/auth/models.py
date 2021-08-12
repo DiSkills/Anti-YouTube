@@ -9,7 +9,8 @@ from app.db import ModelMixin, Base
 class Verification(Base, ModelMixin):
     """
         Verification
-
+        :type uuid: str
+        :type user_id: int
     """
 
     uuid: str = Column(String)
