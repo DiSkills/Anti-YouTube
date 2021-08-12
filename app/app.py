@@ -1,7 +1,9 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.config import TESTS, API_V1_URL
+from app.config import TESTS, API_V1_URL, MEDIA_ROOT
 from app.db import engine, Base
 
 app = FastAPI()
@@ -20,6 +22,8 @@ async def startup():
     async with engine.begin() as conn:
         if not int(TESTS):
             await conn.run_sync(Base.metadata.create_all)
+            if not os.path.exists(MEDIA_ROOT):
+                os.mkdir(MEDIA_ROOT)
 
 
 from app.routers import routers

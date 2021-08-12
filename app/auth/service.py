@@ -33,11 +33,9 @@ async def register(db: AsyncSession, schema: RegisterUser) -> Dict[str, str]:
 
     user = await user_crud.create(db, schema, password=get_password_hash(schema.password))
 
-    user = user.__dict__
+    verification = await verification_crud.create(db, VerificationUUID(uuid=str(uuid4())), user_id=user.id)
 
-    verification = await verification_crud.create(db, VerificationUUID(uuid=str(uuid4())), user_id=user['id'])
-
-    send_new_account_email(user['email'], user['username'], schema.password, verification.__dict__['uuid'])
+    send_new_account_email(user.email, user.username, schema.password, verification.uuid)
 
     return {'msg': 'Send email for activate account'}
 
@@ -59,11 +57,9 @@ async def activate(db: AsyncSession, schema: VerificationUUID) -> Dict[str, str]
 
     verification = await verification_crud.get(db, uuid=schema.uuid)
 
-    verification = verification.__dict__
+    await user_crud.update(db, verification.user_id, UserUpdate(is_active=True))
 
-    await user_crud.update(db, verification['user_id'], UserUpdate(is_active=True))
-
-    await verification_crud.remove(db, id=verification['id'])
+    await verification_crud.remove(db, id=verification.id)
 
     return {'msg': 'Account has been is activated'}
 
@@ -84,9 +80,8 @@ async def login(db: AsyncSession, schema: LoginUser) -> Dict[str, str]:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='User not found')
 
     user = await user_crud.get(db, username=schema.username)
-    user = user.__dict__
 
-    if not verify_password(schema.password, user['password']):
+    if not verify_password(schema.password, user.password):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Password mismatch')
 
-    return create_token(user['id'], user['username'])
+    return create_token(user.id, user.username)
