@@ -73,16 +73,40 @@ class User(Base, ModelMixin):
     def __repr__(self):
         return f'User {self.username}'
 
-    async def is_following(self, db: AsyncSession, user):
-        """Is following user"""
+    async def is_following(self, db: AsyncSession, user: UserRef) -> bool:
+        """
+            Is following to user
+            :param db: DB
+            :type db: AsyncSession
+            :param user: User
+            :type user: User
+            :return: User is following to user?
+            :rtype: bool
+        """
         return bool(list(await db.execute(self.subscriptions.filter(Subscriptions.c.subscription_id == user.id))))
 
     async def follow(self, db: AsyncSession, user: UserRef):
+        """
+            Follow
+            :param db: DB
+            :type db: AsyncSession
+            :param user: User
+            :type user: User
+            :return: None
+        """
         if not await self.is_following(db, user):
             return self.subscriptions.append(user)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='You are already followed')
 
     async def unfollow(self, db: AsyncSession, user: UserRef):
+        """
+            Unfollow
+            :param db: DB
+            :type db: AsyncSession
+            :param user: User
+            :type user: User
+            :return: None
+        """
         if await self.is_following(db, user):
             return self.subscriptions.remove(user)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='You are already unfollowed')
