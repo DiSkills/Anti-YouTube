@@ -6,7 +6,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import TESTS, API_V1_URL, MEDIA_ROOT
 from app.db import engine, Base
 
-app = FastAPI()
+app = FastAPI(
+    title='FastAPI Anti-YouTube',
+    description='FastAPI Anti-YouTube by _Counter021_',
+    version='0.3.3',
+)
 
 app.add_middleware(
     CORSMiddleware,
