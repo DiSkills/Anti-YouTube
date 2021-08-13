@@ -85,6 +85,24 @@ class AuthTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {'msg': 'Password has been reset'})
 
+        tokens = self.client.post(
+            self.url + '/login', json={'username': 'test', 'password': 'test123456'}
+        ).json()
+
+        response = self.client.post(
+            self.url + f'/password-reset?token={tokens["access_token"]}',
+            json={'password': 'test123456', 'confirm_password': 'test123456'}
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'detail': 'Reset token not found'})
+
+        response = self.client.post(
+            self.url + f'/password-reset?token={tokens["refresh_token"]}',
+            json={'password': 'test123456', 'confirm_password': 'test123456'}
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'detail': 'Reset token not found'})
+
         self.loop(user_crud.remove(self.session, id=1))
         self.loop(self.session.commit())
 
@@ -113,6 +131,24 @@ class AuthTestCase(TestCase):
             verify_password_reset(token, Password(password='test123456', confirm_password='test123456'))
         )
         self.assertEqual(response, {'msg': 'Password has been reset'})
+
+        tokens = self.client.post(
+            self.url + '/login', json={'username': 'test', 'password': 'test123456'}
+        ).json()
+
+        with self.assertRaises(HTTPException) as error:
+            self.loop(
+                verify_password_reset(
+                    tokens['access_token'], Password(password='test123456', confirm_password='test123456')
+                )
+            )
+
+        with self.assertRaises(HTTPException) as error:
+            self.loop(
+                verify_password_reset(
+                    tokens['refresh_token'], Password(password='test123456', confirm_password='test123456')
+                )
+            )
 
         self.loop(user_crud.remove(self.session, id=1))
         self.loop(self.session.commit())
@@ -231,6 +267,10 @@ class AuthTestCase(TestCase):
 
         with self.assertRaises(HTTPException) as error:
             self.loop(is_authenticated(tokens.json()['refresh_token']))
+
+        with self.assertRaises(HTTPException) as error:
+            token = create_password_reset_token(self.data['email'])
+            self.loop(is_authenticated(token))
 
         with self.assertRaises(HTTPException) as error:
             self.loop(is_active(self.loop(is_authenticated(tokens.json()['access_token']))))
