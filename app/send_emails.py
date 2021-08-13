@@ -11,7 +11,8 @@ from app.config import (
     SMTP_USER,
     SMTP_PORT,
     SMTP_HOST,
-    SMTP_PASSWORD, TESTS,
+    SMTP_PASSWORD,
+    TESTS,
 )
 
 password_reset_jwt_subject = 'preset'

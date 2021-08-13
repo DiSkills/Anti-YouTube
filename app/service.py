@@ -3,7 +3,7 @@ import os
 from fastapi import HTTPException, status
 from fastapi.responses import FileResponse
 
-from config import PAGINATE_SIZE
+from app.config import PAGINATE_SIZE
 
 
 async def get_file(file_name: str) -> FileResponse:
