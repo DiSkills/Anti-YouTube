@@ -7,11 +7,20 @@ from fastapi.testclient import TestClient
 from sqlalchemy import update
 
 from app.app import app
-from app.auth.api import register, activate, login, refresh, follow, unfollow
+from app.auth.api import (
+    register,
+    activate,
+    login,
+    refresh,
+    follow,
+    unfollow,
+    create_reset_password,
+    verify_password_reset,
+)
 from app.auth.crud import user_crud, verification_crud
 from app.auth.permission import is_authenticated, is_active, is_superuser
-from app.auth.schemas import RegisterUser, VerificationUUID, LoginUser, RefreshToken
-from app.auth.tokens import ALGORITHM
+from app.auth.schemas import RegisterUser, VerificationUUID, LoginUser, RefreshToken, Password
+from app.auth.tokens import ALGORITHM, create_password_reset_token
 from app.config import API_V1_URL, SECRET_KEY
 from app.db import Base, engine, AsyncSession
 
@@ -52,6 +61,66 @@ class AuthTestCase(TestCase):
     def tearDown(self) -> None:
         self.loop(self.session.close())
         self.loop(drop_all())
+
+    def test_reset_password_request(self):
+        self.client.post(self.url + '/register', json=self.data)
+
+        # Create reset password
+
+        response = self.client.get(self.url + f'/request-password-reset?email={self.data["email"]}')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'msg': 'Email send'})
+
+        response = self.client.get(self.url + f'/request-password-reset?email=test@example.ru')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'detail': 'User not found'})
+
+        # Verify reset password
+
+        token = create_password_reset_token(self.data['email'])
+        response = self.client.post(
+            self.url + f'/password-reset?token={token}',
+            json={'password': 'test123456', 'confirm_password': 'test123456'}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'msg': 'Password has been reset'})
+
+        self.loop(user_crud.remove(self.session, id=1))
+        self.loop(self.session.commit())
+
+        response = self.client.post(
+            self.url + f'/password-reset?token={token}',
+            json={'password': 'test123456', 'confirm_password': 'test123456'}
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'detail': 'User not found'})
+
+    def test_reset_password(self):
+        self.client.post(self.url + '/register', json=self.data)
+
+        # Create reset password
+
+        response = self.loop(create_reset_password(self.data["email"]))
+        self.assertEqual(response, {'msg': 'Email send'})
+
+        with self.assertRaises(HTTPException) as error:
+            self.loop(create_reset_password('test@example.ru'))
+
+        # Verify reset password
+
+        token = create_password_reset_token(self.data['email'])
+        response = self.loop(
+            verify_password_reset(token, Password(password='test123456', confirm_password='test123456'))
+        )
+        self.assertEqual(response, {'msg': 'Password has been reset'})
+
+        self.loop(user_crud.remove(self.session, id=1))
+        self.loop(self.session.commit())
+
+        with self.assertRaises(HTTPException) as error:
+            self.loop(
+                verify_password_reset(token, Password(password='test123456', confirm_password='test123456'))
+            )
 
     def test_following_request(self):
         self.client.post(self.url + '/register', json=self.data)

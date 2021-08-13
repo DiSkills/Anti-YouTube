@@ -6,10 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.crud import user_crud, verification_crud
 from app.auth.models import User
-from app.auth.schemas import RegisterUser, VerificationUUID, UserUpdate, LoginUser, RefreshToken
+from app.auth.schemas import RegisterUser, VerificationUUID, UserUpdate, LoginUser, RefreshToken, Password
 from app.auth.security import get_password_hash, verify_password
-from app.auth.send_emails import send_new_account_email
-from app.auth.tokens import create_token, verify_refresh_token
+from app.auth.send_emails import send_new_account_email, send_reset_password_email
+from app.auth.tokens import create_token, verify_refresh_token, create_password_reset_token, verify_password_reset_token
 
 
 async def refresh(db: AsyncSession, schema: RefreshToken):
@@ -163,3 +163,51 @@ async def unfollow(db: AsyncSession, to_id: int, user: User):
 
     await user.unfollow(db, to_user)
     return {'msg': 'You unfollow to user'}
+
+
+async def create_reset_password(db: AsyncSession, email: str):
+    """
+        Create password reset
+        :param db: DB
+        :type db: AsyncSession
+        :param email: Email
+        :type email: str
+        :return: Message
+        :rtype: dict
+        :raise HTTPException 400: User not exist
+    """
+
+    if not await user_crud.exists(db, email=email):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='User not found')
+
+    token = create_password_reset_token(email)
+    user = await user_crud.get(db, email=email)
+    send_reset_password_email(user.email, user.username, user.password, token)
+    return {'msg': 'Email send'}
+
+
+async def verify_password_reset(db: AsyncSession, token: str, schema: Password):
+    """
+        Verify and reset password
+        :param db: DB
+        :type db: AsyncSession
+        :param token: Token
+        :type token: str
+        :param schema: New password
+        :type schema: Password
+        :return: Message
+        :rtype: dict
+        :raise HTTPException 400: User not exist
+    """
+
+    email = verify_password_reset_token(token)
+
+    if not await user_crud.exists(db, email=email):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='User not found')
+
+    user = await user_crud.get(db, email=email)
+
+    del schema.confirm_password
+
+    await user_crud.update(db, user.id, schema, password=get_password_hash(schema.password))
+    return {'msg': 'Password has been reset'}

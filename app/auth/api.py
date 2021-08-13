@@ -3,7 +3,7 @@ from fastapi import APIRouter, status, Depends
 from app.auth import service
 from app.auth.models import User
 from app.auth.permission import is_active
-from app.auth.schemas import RegisterUser, VerificationUUID, LoginUser, Tokens, RefreshToken, AccessToken
+from app.auth.schemas import RegisterUser, VerificationUUID, LoginUser, Tokens, RefreshToken, AccessToken, Password
 from app.db import async_session
 from app.schemas import Message
 
@@ -50,3 +50,17 @@ async def unfollow(to_id: int, user: User = Depends(is_active)):
     async with async_session() as session:
         async with session.begin():
             return await service.unfollow(session, to_id, user)
+
+
+@auth_router.get('/request-password-reset', response_model=Message, status_code=status.HTTP_200_OK)
+async def create_reset_password(email: str):
+    async with async_session() as session:
+        async with session.begin():
+            return await service.create_reset_password(session, email)
+
+
+@auth_router.post('/password-reset', response_model=Message, status_code=status.HTTP_200_OK)
+async def verify_password_reset(token: str, schema: Password):
+    async with async_session() as session:
+        async with session.begin():
+            return await service.verify_password_reset(session, token, schema)
