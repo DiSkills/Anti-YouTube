@@ -17,10 +17,13 @@ from app.auth.api import (
     create_reset_password,
     verify_password_reset,
     get_username,
+    get_data,
+    change_data,
 )
 from app.auth.crud import user_crud, verification_crud
 from app.auth.permission import is_authenticated, is_active, is_superuser
-from app.auth.schemas import RegisterUser, VerificationUUID, LoginUser, RefreshToken, Password
+from app.auth.schemas import RegisterUser, VerificationUUID, LoginUser, RefreshToken, Password, ChangeUserDataResponse, \
+    ChangeUserData
 from app.auth.tokens import ALGORITHM, create_password_reset_token
 from app.config import API_V1_URL, SECRET_KEY
 from app.db import Base, engine, AsyncSession
@@ -550,3 +553,52 @@ class AuthTestCase(TestCase):
 
         with self.assertRaises(HTTPException) as error:
             self.loop(get_username('test2@example.com'))
+
+    def test_change_data_request(self):
+        self.client.post(self.url + '/register', json=self.data)
+
+        verification = self.loop(verification_crud.get(self.session, user_id=1))
+        self.client.post(self.url + '/activate', json={'uuid': verification.uuid})
+
+        tokens = self.client.post(self.url + '/login', json={'username': 'test', 'password': 'test1234'})
+
+        headers = {'Authorization': f'Bearer {tokens.json()["access_token"]}'}
+
+        # Get data
+        response = self.client.get(self.url + '/change-data', headers=headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), ChangeUserDataResponse(**self.data, avatar=''))
+
+        # Put data
+        response = self.client.put(self.url + '/change-data', headers=headers, json={
+            'send_message': False, 'about': 'test',
+        })
+        self.assertFalse(response.json()['send_message'])
+        self.assertEqual(response.json()['about'], 'test')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(), ChangeUserDataResponse(**{**self.data, 'send_message': False, 'about': 'test'}, avatar='')
+        )
+
+    def test_change_data(self):
+        self.client.post(self.url + '/register', json=self.data)
+
+        verification = self.loop(verification_crud.get(self.session, user_id=1))
+        self.client.post(self.url + '/activate', json={'uuid': verification.uuid})
+
+        user = self.loop(user_crud.get(self.session, id=1))
+
+        # Get data
+        response = self.loop(get_data(user))
+        self.assertEqual(response, user.__dict__)
+
+        # Put data
+        response = self.loop(change_data(ChangeUserData(send_message=False, about='test'), user))
+        self.loop(self.session.commit())
+        self.assertFalse(response['send_message'])
+        self.assertEqual(response['about'], 'test')
+
+        user = self.loop(user_crud.get(self.session, id=1))
+
+        self.assertEqual(response['send_message'], user.send_message)
+        self.assertEqual(response['about'], user.about)

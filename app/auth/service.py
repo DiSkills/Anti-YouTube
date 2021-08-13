@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Any
 from uuid import uuid4
 
 from fastapi import status, HTTPException
@@ -6,7 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.crud import user_crud, verification_crud
 from app.auth.models import User
-from app.auth.schemas import RegisterUser, VerificationUUID, UserUpdate, LoginUser, RefreshToken, Password
+from app.auth.schemas import RegisterUser, VerificationUUID, UserUpdate, LoginUser, RefreshToken, Password, \
+    ChangeUserData
 from app.auth.security import get_password_hash, verify_password
 from app.auth.send_emails import send_new_account_email, send_reset_password_email, send_username_email
 from app.auth.tokens import create_token, verify_refresh_token, create_password_reset_token, verify_password_reset_token
@@ -231,3 +232,30 @@ async def get_username(db: AsyncSession, email: str) -> Dict[str, str]:
     user = await user_crud.get(db, email=email)
     send_username_email(user.email, user.username)
     return {'msg': 'Email send'}
+
+
+async def get_data(user: User) -> Dict[str, Any]:
+    """
+        Get user data
+        :param user: User
+        :type user: User
+        :return: User
+        :rtype: dict
+    """
+    return user.__dict__
+
+
+async def change_data(db: AsyncSession, schema: ChangeUserData, user: User) -> Dict[str, Any]:
+    """
+        Change user data
+        :param db: DB
+        :type db: AsyncSession
+        :param schema: New user data
+        :type schema: ChangeUserData
+        :param user: User
+        :type user: User
+        :return: User with new data
+        :rtype: dict
+    """
+    user = await user_crud.update(db, user.id, schema)
+    return user.__dict__

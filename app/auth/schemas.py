@@ -106,3 +106,23 @@ class TokenPayload(BaseModel):
     """
 
     user_id: int
+
+
+class ChangeUserData(BaseModel):
+    """
+        Change user data
+        :type about: str
+        :type send_message: bool
+    """
+
+    about: str
+    send_message: bool = True
+
+
+class ChangeUserDataResponse(ChangeUserData):
+    """
+        Change user data response
+        :type avatar: str
+    """
+
+    avatar: str

@@ -3,7 +3,17 @@ from fastapi import APIRouter, status, Depends
 from app.auth import service
 from app.auth.models import User
 from app.auth.permission import is_active
-from app.auth.schemas import RegisterUser, VerificationUUID, LoginUser, Tokens, RefreshToken, AccessToken, Password
+from app.auth.schemas import (
+    RegisterUser,
+    VerificationUUID,
+    LoginUser,
+    Tokens,
+    RefreshToken,
+    AccessToken,
+    Password,
+    ChangeUserDataResponse,
+    ChangeUserData,
+)
 from app.db import async_session
 from app.schemas import Message
 
@@ -134,3 +144,15 @@ async def get_username(email: str):
     async with async_session() as session:
         async with session.begin():
             return await service.get_username(session, email)
+
+
+@auth_router.get('/change-data', response_model=ChangeUserDataResponse, status_code=status.HTTP_200_OK)
+async def get_data(user: User = Depends(is_active)):
+    return await service.get_data(user)
+
+
+@auth_router.put('/change-data', response_model=ChangeUserDataResponse, status_code=status.HTTP_200_OK)
+async def change_data(schema: ChangeUserData, user: User = Depends(is_active)):
+    async with async_session() as session:
+        async with session.begin():
+            return await service.change_data(session, schema, user)
