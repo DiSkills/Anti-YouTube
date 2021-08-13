@@ -64,3 +64,10 @@ async def verify_password_reset(token: str, schema: Password):
     async with async_session() as session:
         async with session.begin():
             return await service.verify_password_reset(session, token, schema)
+
+
+@auth_router.post('/username', response_model=Message, status_code=status.HTTP_200_OK)
+async def get_username(email: str):
+    async with async_session() as session:
+        async with session.begin():
+            return await service.get_username(session, email)

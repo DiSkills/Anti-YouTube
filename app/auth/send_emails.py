@@ -69,3 +69,29 @@ def send_reset_password_email(email_to: str, username: str, password: str, token
             'link': link,
         },
     )
+
+
+def send_username_email(email_to: str, username: str) -> None:
+    """
+        Send email for get username
+        :param email_to: Email
+        :type email_to: str
+        :param username: Username
+        :type username: str
+        :return: None
+    """
+    project_name = PROJECT_NAME
+    subject = f'{project_name} - Get username'
+    with open(Path(EMAIL_TEMPLATES_DIR) / 'get_username.html') as f:
+        template_str = f.read()
+    send_email(
+        email_to=email_to,
+        subject_template=subject,
+        html_template=template_str,
+        environment={
+            'project_name': PROJECT_NAME,
+            'username': username,
+            'email': email_to,
+        },
+    )
+

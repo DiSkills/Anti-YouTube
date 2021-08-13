@@ -16,6 +16,7 @@ from app.auth.api import (
     unfollow,
     create_reset_password,
     verify_password_reset,
+    get_username,
 )
 from app.auth.crud import user_crud, verification_crud
 from app.auth.permission import is_authenticated, is_active, is_superuser
@@ -529,3 +530,23 @@ class AuthTestCase(TestCase):
 
         with self.assertRaises(HTTPException) as error:
             self.loop(refresh(RefreshToken(refresh_token=tokens.json()['refresh_token'])))
+
+    def test_get_username_request(self):
+        self.client.post(self.url + '/register', json=self.data)
+
+        response = self.client.post(self.url + f'/username?email={self.data["email"]}')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'msg': 'Email send'})
+
+        response = self.client.post(self.url + f'/username?email=test2@example.com')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'detail': 'User not found'})
+
+    def test_get_username(self):
+        self.client.post(self.url + '/register', json=self.data)
+
+        response = self.loop(get_username(self.data['email']))
+        self.assertEqual(response, {'msg': 'Email send'})
+
+        with self.assertRaises(HTTPException) as error:
+            self.loop(get_username('test2@example.com'))
