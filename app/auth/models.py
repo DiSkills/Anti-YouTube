@@ -82,7 +82,7 @@ class User(Base, ModelMixin):
             return self.subscriptions.append(user)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='You are already followed')
 
-    # async def unfollow(self, db: AsyncSession, user: UserRef):
-    #     if await self.is_following(db, user):
-    #         return self.subscriptions.remove(user)
-    #     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='You are already unfollowed')
+    async def unfollow(self, db: AsyncSession, user: UserRef):
+        if await self.is_following(db, user):
+            return self.subscriptions.remove(user)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='You are already unfollowed')

@@ -135,3 +135,31 @@ async def follow(db: AsyncSession, to_id: int, user: User):
 
     await user.follow(db, to_user)
     return {'msg': 'You follow to user'}
+
+
+async def unfollow(db: AsyncSession, to_id: int, user: User):
+    """
+        Unfollow
+        :param db: DB
+        :type db: AsyncSession
+        :param to_id: To user ID
+        :type to_id: int
+        :param user: User
+        :type user: User
+        :return: Message
+        :rtype: dict
+        :raise HTTPException 400: unfollow to user not found or You are already unfollowed or You not unfollow to self
+    """
+
+    if to_id == user.id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='You not unfollow to self')
+
+    if not await user_crud.exists(db, id=to_id):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Unfollow to user not found')
+
+    to_user = await user_crud.get(db, id=to_id)
+
+    user = await user_crud.get(db, id=user.id)
+
+    await user.unfollow(db, to_user)
+    return {'msg': 'You unfollow to user'}

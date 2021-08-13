@@ -43,3 +43,10 @@ async def follow(to_id: int, user: User = Depends(is_active)):
     async with async_session() as session:
         async with session.begin():
             return await service.follow(session, to_id, user)
+
+
+@auth_router.post('/unfollow', response_model=Message, status_code=status.HTTP_200_OK)
+async def unfollow(to_id: int, user: User = Depends(is_active)):
+    async with async_session() as session:
+        async with session.begin():
+            return await service.unfollow(session, to_id, user)
