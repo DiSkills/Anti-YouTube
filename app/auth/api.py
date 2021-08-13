@@ -146,12 +146,26 @@ async def get_username(email: str):
             return await service.get_username(session, email)
 
 
-@auth_router.get('/change-data', response_model=ChangeUserDataResponse, status_code=status.HTTP_200_OK)
+@auth_router.get(
+    '/change-data',
+    response_model=ChangeUserDataResponse,
+    status_code=status.HTTP_200_OK,
+    description='Get user data',
+    response_description='Get user data',
+    name='Get user data',
+)
 async def get_data(user: User = Depends(is_active)):
     return await service.get_data(user)
 
 
-@auth_router.put('/change-data', response_model=ChangeUserDataResponse, status_code=status.HTTP_200_OK)
+@auth_router.put(
+    '/change-data',
+    response_model=ChangeUserDataResponse,
+    status_code=status.HTTP_200_OK,
+    description='Change user data',
+    response_description='Change user data',
+    name='Change user data',
+)
 async def change_data(schema: ChangeUserData, user: User = Depends(is_active)):
     async with async_session() as session:
         async with session.begin():
