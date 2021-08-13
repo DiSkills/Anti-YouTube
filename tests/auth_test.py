@@ -22,8 +22,15 @@ from app.auth.api import (
 )
 from app.auth.crud import user_crud, verification_crud
 from app.auth.permission import is_authenticated, is_active, is_superuser
-from app.auth.schemas import RegisterUser, VerificationUUID, LoginUser, RefreshToken, Password, ChangeUserDataResponse, \
-    ChangeUserData
+from app.auth.schemas import (
+    RegisterUser,
+    VerificationUUID,
+    LoginUser,
+    RefreshToken,
+    Password,
+    ChangeUserDataResponse,
+    ChangeUserData,
+)
 from app.auth.tokens import ALGORITHM, create_password_reset_token
 from app.config import API_V1_URL, SECRET_KEY
 from app.db import Base, engine, AsyncSession
