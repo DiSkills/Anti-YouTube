@@ -11,7 +11,7 @@ from app.config import (
     SMTP_USER,
     SMTP_PORT,
     SMTP_HOST,
-    SMTP_PASSWORD,
+    SMTP_PASSWORD, TESTS,
 )
 
 password_reset_jwt_subject = 'preset'
@@ -46,5 +46,6 @@ def send_email(email_to: str, subject_template: str = '', html_template: str = '
         smtp_options['user'] = SMTP_USER
     if SMTP_PASSWORD:
         smtp_options['password'] = SMTP_PASSWORD
-    response = message.send(to=email_to, render=environment, smtp=smtp_options)
-    logging.info(f'send email result: {response}')
+    if not TESTS:
+        response = message.send(to=email_to, render=environment, smtp=smtp_options)
+        logging.info(f'send email result: {response}')

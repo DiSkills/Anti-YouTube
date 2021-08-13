@@ -5,6 +5,7 @@ from fastapi import status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.crud import user_crud, verification_crud
+from app.auth.models import User
 from app.auth.schemas import RegisterUser, VerificationUUID, UserUpdate, LoginUser, RefreshToken
 from app.auth.security import get_password_hash, verify_password
 from app.auth.send_emails import send_new_account_email
@@ -106,3 +107,31 @@ async def login(db: AsyncSession, schema: LoginUser) -> Dict[str, str]:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Password mismatch')
 
     return create_token(user.id, user.username)
+
+
+async def follow(db: AsyncSession, to_id: int, user: User):
+    """
+        Follow
+        :param db: DB
+        :type db: AsyncSession
+        :param to_id: To user ID
+        :type to_id: int
+        :param user: User
+        :type user: User
+        :return: Message
+        :rtype: dict
+        :raise HTTPException 400: Follow to user not found or You are already followed or You not follow to self
+    """
+
+    if to_id == user.id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='You not follow to self')
+
+    if not await user_crud.exists(db, id=to_id):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Follow to user not found')
+
+    to_user = await user_crud.get(db, id=to_id)
+
+    user = await user_crud.get(db, id=user.id)
+
+    await user.follow(db, to_user)
+    return {'msg': 'You follow to user'}

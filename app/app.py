@@ -20,7 +20,7 @@ app.add_middleware(
 @app.on_event('startup')
 async def startup():
     async with engine.begin() as conn:
-        if not int(TESTS):
+        if not TESTS:
             await conn.run_sync(Base.metadata.create_all)
             if not os.path.exists(MEDIA_ROOT):
                 os.mkdir(MEDIA_ROOT)

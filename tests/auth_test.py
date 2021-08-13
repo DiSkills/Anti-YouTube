@@ -4,9 +4,10 @@ from unittest import TestCase
 import jwt
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
+from sqlalchemy import update
 
 from app.app import app
-from app.auth.api import register, activate, login, refresh
+from app.auth.api import register, activate, login, refresh, follow
 from app.auth.crud import user_crud, verification_crud
 from app.auth.permission import is_authenticated, is_active, is_superuser
 from app.auth.schemas import RegisterUser, VerificationUUID, LoginUser, RefreshToken
@@ -52,6 +53,63 @@ class AuthTestCase(TestCase):
         self.loop(self.session.close())
         self.loop(drop_all())
 
+    def test_follow_request(self):
+        self.client.post(self.url + '/register', json=self.data)
+        tokens = self.client.post(self.url + '/login', json={'username': 'test', 'password': 'test1234'})
+        verification = self.loop(verification_crud.get(self.session, user_id=1)).__dict__
+        self.client.post(self.url + '/activate', json={'uuid': verification['uuid']})
+
+        self.client.post(self.url + '/register', json={**self.data, 'username': 'test2', 'email': 'test2@example.com'})
+
+        headers = {'Authorization': f'Bearer {tokens.json()["access_token"]}'}
+
+        user_1 = self.loop(user_crud.get(self.session, id=1))
+        user_2 = self.loop(user_crud.get(self.session, id=2))
+        self.assertEqual(self.loop(user_1.is_following(self.session, user_2)), False)
+
+        response = self.client.post(self.url + '/follow?to_id=2', headers=headers)
+        self.assertEqual(response.json(), {'msg': 'You follow to user'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.loop(user_1.is_following(self.session, user_2)), True)
+
+        response = self.client.post(self.url + '/follow?to_id=2', headers=headers)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'detail': 'You are already followed'})
+        self.assertEqual(self.loop(user_1.is_following(self.session, user_2)), True)
+
+        response = self.client.post(self.url + '/follow?to_id=1', headers=headers)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'detail': 'You not follow to self'})
+
+        response = self.client.post(self.url + '/follow?to_id=4', headers=headers)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'detail': 'Follow to user not found'})
+
+    def test_follow(self):
+        self.client.post(self.url + '/register', json=self.data)
+
+        verification = self.loop(verification_crud.get(self.session, user_id=1)).__dict__
+        self.client.post(self.url + '/activate', json={'uuid': verification['uuid']})
+
+        self.client.post(self.url + '/register', json={**self.data, 'username': 'test2', 'email': 'test2@example.com'})
+
+        user_1 = self.loop(user_crud.get(self.session, id=1))
+        user_2 = self.loop(user_crud.get(self.session, id=2))
+        self.assertEqual(self.loop(user_1.is_following(self.session, user_2)), False)
+
+        response = self.loop(follow(user_2.id, user_1))
+        self.assertEqual(response, {'msg': 'You follow to user'})
+        self.assertEqual(self.loop(user_1.is_following(self.session, user_2)), True)
+
+        with self.assertRaises(HTTPException) as error:
+            self.loop(follow(user_2.id, user_1))
+
+        with self.assertRaises(HTTPException) as error:
+            self.loop(follow(user_1.id, user_1))
+
+        with self.assertRaises(HTTPException) as error:
+            self.loop(follow(4, user_1))
+
     def test_permission(self):
         with self.assertRaises(HTTPException) as error:
             self.loop(is_authenticated('test'))
@@ -76,6 +134,12 @@ class AuthTestCase(TestCase):
         with self.assertRaises(HTTPException) as error:
             self.loop(is_superuser(self.loop(is_active(self.loop(is_authenticated(tokens.json()['access_token']))))))
 
+        self.loop(self.session.execute(update(user_crud.model).filter_by(id=1).values(is_superuser=True)))
+        self.loop(self.session.commit())
+        response = self.loop(
+            is_superuser(self.loop(is_active(self.loop(is_authenticated(tokens.json()['access_token'])))))
+        )
+        self.assertEqual(response.id, 1)
 
     def test_register_request(self):
 
@@ -276,8 +340,8 @@ class AuthTestCase(TestCase):
 
         self.client.post(self.url + '/activate', json={'uuid': verification.uuid})
 
-        self.tearDown()
-        self.setUp()
+        self.loop(user_crud.remove(self.session, id=1))
+        self.loop(self.session.commit())
 
         response = self.client.post(self.url + '/refresh', json={'refresh_token': tokens.json()['refresh_token']})
         self.assertEqual(response.status_code, 400)
@@ -305,8 +369,8 @@ class AuthTestCase(TestCase):
 
         self.client.post(self.url + '/activate', json={'uuid': verification.uuid})
 
-        self.tearDown()
-        self.setUp()
+        self.loop(user_crud.remove(self.session, id=1))
+        self.loop(self.session.commit())
 
         with self.assertRaises(HTTPException) as error:
             self.loop(refresh(RefreshToken(refresh_token=tokens.json()['refresh_token'])))

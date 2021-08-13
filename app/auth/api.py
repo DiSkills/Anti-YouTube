@@ -1,6 +1,8 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, status, Depends
 
 from app.auth import service
+from app.auth.models import User
+from app.auth.permission import is_active
 from app.auth.schemas import RegisterUser, VerificationUUID, LoginUser, Tokens, RefreshToken, AccessToken
 from app.db import async_session
 from app.schemas import Message
@@ -34,3 +36,10 @@ async def login(schema: LoginUser):
     async with async_session() as session:
         async with session.begin():
             return await service.login(session, schema)
+
+
+@auth_router.post('/follow', response_model=Message, status_code=status.HTTP_200_OK)
+async def follow(to_id: int, user: User = Depends(is_active)):
+    async with async_session() as session:
+        async with session.begin():
+            return await service.follow(session, to_id, user)
