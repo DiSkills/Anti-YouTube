@@ -6,8 +6,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.crud import user_crud, verification_crud
 from app.auth.models import User
-from app.auth.schemas import RegisterUser, VerificationUUID, UserUpdate, LoginUser, RefreshToken, Password, \
-    ChangeUserData
+from app.auth.schemas import (
+    RegisterUser,
+    VerificationUUID,
+    UserUpdate,
+    LoginUser,
+    RefreshToken,
+    Password,
+    ChangeUserData,
+)
 from app.auth.security import get_password_hash, verify_password
 from app.auth.send_emails import send_new_account_email, send_reset_password_email, send_username_email
 from app.auth.tokens import create_token, verify_refresh_token, create_password_reset_token, verify_password_reset_token
