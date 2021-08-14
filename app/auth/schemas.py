@@ -94,3 +94,10 @@ class UploadAvatar(BaseModel):
 class ChangeUserDataResponse(ChangeUserData, UploadAvatar):
     """ Change user data response """
     pass
+
+
+class RegisterAdmin(RegisterUser):
+    """ Register admin """
+
+    is_active: bool = True
+    is_superuser: bool = True
