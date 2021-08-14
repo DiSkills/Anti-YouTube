@@ -1,10 +1,10 @@
-from fastapi import APIRouter, status, Form, UploadFile, File, Depends
+from fastapi import APIRouter, status, Form, UploadFile, File, Depends, Query
 
 from app.auth.models import User
 from app.auth.permission import is_active
 from app.db import async_session
 from app.videos import service
-from app.videos.schemas import GetVideo, CreateVideo
+from app.videos.schemas import GetVideo, CreateVideo, VideoPaginate
 
 videos_router = APIRouter()
 
@@ -29,3 +29,31 @@ async def create_video(
         async with session.begin():
             schema: CreateVideo = CreateVideo(title=title, description=description, category_id=category_id)
             return await service.create_video(session, schema, video_file, preview_file, user)
+
+
+@videos_router.get(
+    '/',
+    status_code=status.HTTP_200_OK,
+    response_model=VideoPaginate,
+    description='Get all videos',
+    response_description='Get all videos',
+    name='Get videos',
+)
+async def get_all_videos(page: int = Query(1, gt=0)):
+    async with async_session() as session:
+        async with session.begin():
+            return await service.get_all_videos(db=session, page=page)
+
+
+@videos_router.get(
+    '/{pk}',
+    status_code=status.HTTP_200_OK,
+    response_model=GetVideo,
+    description='Get video',
+    response_description='Get video',
+    name='Get video',
+)
+async def get_video(pk: int):
+    async with async_session() as session:
+        async with session.begin():
+            return await service.get_video(session, pk)

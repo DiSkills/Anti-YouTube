@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,6 +27,25 @@ class VideoCRUD(CRUD[Video, CreateVideo, VideoUpdate]):
             ).filter_by(**kwargs)
         )
         return query.scalars().first()
+
+    async def all(self, db: AsyncSession,  skip: int = 0, limit: int = 100) -> List[ModelType]:
+        """
+            All
+            :param db: DB
+            :type db: AsyncSession
+            :param skip: start
+            :type skip: int
+            :param limit: end
+            :type limit: int
+            :return: All ModelType
+            :rtype: list
+        """
+        query = await db.execute(
+            select(self.model).options(
+                selectinload(self.model.category), selectinload(self.model.user)
+            ).order_by(self.model.id.desc()).offset(skip).limit(limit)
+        )
+        return query.scalars().all()
 
 
 video_crud = VideoCRUD(Video)

@@ -1,8 +1,13 @@
 from datetime import datetime
+from typing import ForwardRef
 
 from sqlalchemy import Column, String, DateTime, BigInteger, Integer, ForeignKey
+from sqlalchemy.orm import relationship
 
 from app.db import Base, ModelMixin
+
+Category = ForwardRef('Category')
+User = ForwardRef('User')
 
 
 class Video(Base, ModelMixin):
@@ -17,3 +22,6 @@ class Video(Base, ModelMixin):
 
     category_id: int = Column(Integer, ForeignKey('category.id', ondelete='CASCADE'))
     user_id: int = Column(Integer, ForeignKey('user.id', ondelete='CASCADE'))
+
+    category: Category = relationship('Category', backref='related_videos')
+    user: User = relationship('User', backref='related_videos')

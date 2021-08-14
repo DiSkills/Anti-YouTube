@@ -53,7 +53,7 @@ class User(Base, ModelMixin):
         backref=backref('subscribers', lazy='dynamic'),
         lazy='dynamic'
     )
-    videos: List[Video] = relationship(Video, backref='user', lazy='dynamic')
+    videos: List[Video] = relationship(Video, backref='related_user', lazy='dynamic')
 
     def __str__(self):
         return f'{self.username}'

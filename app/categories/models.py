@@ -12,7 +12,7 @@ class Category(Base, ModelMixin):
 
     name: str = Column(String)
 
-    videos: List[Video] = relationship(Video, backref='category', lazy='dynamic')
+    videos: List[Video] = relationship(Video, backref='related_category', lazy='dynamic')
 
     def __str__(self):
         return f'{self.name}'

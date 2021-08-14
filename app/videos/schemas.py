@@ -1,9 +1,11 @@
 from datetime import datetime
+from typing import List
 
 from pydantic import BaseModel
 
 from app.auth.schemas import UserPublic
 from app.categories.schemas import GetCategory
+from app.schemas import Paginate
 
 
 class VideoBase(BaseModel):
@@ -45,3 +47,9 @@ class GetVideo(GetVideoNotUser):
     """ Get video """
 
     user: UserPublic
+
+
+class VideoPaginate(Paginate):
+    """ Video paginate """
+
+    results: List[GetVideo]

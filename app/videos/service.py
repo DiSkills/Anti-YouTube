@@ -1,13 +1,16 @@
 from datetime import datetime
+from typing import List, Dict, Any
 
 from fastapi import UploadFile, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import User
 from app.categories.crud import category_crud
-from app.config import MEDIA_ROOT
+from app.config import MEDIA_ROOT, SERVER_HOST, API_V1_URL
 from app.files import write_file
+from app.service import paginate
 from app.videos.crud import video_crud
+from app.videos.models import Video
 from app.videos.schemas import CreateVideo
 
 
@@ -38,7 +41,7 @@ async def validation(db: AsyncSession, video_file: UploadFile, preview_file: Upl
 
 async def create_video(
         db: AsyncSession, schema: CreateVideo, video_file: UploadFile, preview_file: UploadFile, user: User,
-):
+) -> Dict[str, Any]:
     """
         Create video
         :param db: DB
@@ -64,4 +67,45 @@ async def create_video(
     await write_file(preview_name, preview_file)
     video = await video_crud.create(db, schema, video_file=video_name, preview_file=preview_name, user_id=user.id)
     video = await video_crud.get(db, id=video.id)
+    return {**video.__dict__, 'category': video.category.__dict__, 'user': video.user.__dict__}
+
+
+@paginate(crud=video_crud, url=f'{SERVER_HOST}{API_V1_URL}/videos/?page=')
+async def get_all_videos(*, db: AsyncSession, queryset: List[Video], page: int):
+    """
+        Get all videos
+        :param db: DB
+        :type db: AsyncSession
+        :param queryset: Queryset
+        :type queryset: list
+        :param page: Page
+        :type page: int
+        :return: Videos
+        :rtype: list
+    """
+    return [
+        {
+            **video.__dict__,
+            'user': video.user.__dict__,
+            'category': video.category.__dict__,
+        } for video in queryset
+    ]
+
+
+async def get_video(db: AsyncSession, pk: int):
+    """
+        Get video
+        :param db: DB
+        :type db: AsyncSession
+        :param pk: ID
+        :type pk: int
+        :return: Video
+        :rtype: dict
+        :raise HTTPException 400: Video not exist
+    """
+
+    if not await video_crud.exists(db, id=pk):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Video not found')
+
+    video = await video_crud.get(db, id=pk)
     return {**video.__dict__, 'category': video.category.__dict__, 'user': video.user.__dict__}
