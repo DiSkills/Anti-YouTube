@@ -1,19 +1,30 @@
 FROM python:3.8.10
 
-WORKDIR /site
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PIP_NO_CACHE_DIR=off
+ENV PIP_DISABLE_PIP_VERSION_CHECK=on
+ENV PIP_DEFAULT_TIMEOUT=100
+ENV POETRY_VERSION=1.0.5
+ENV POETRY_HOME="/opt/poetry"
+ENV POETRY_VIRTUALENVS_IN_PROJECT=true
+ENV POETRY_NO_INTERACTION=1
+ENV PYSETUP_PATH="/opt/pysetup"
+ENV VENV_PATH="/opt/pysetup/.venv"
 
-COPY poetry.lock .
-COPY pyproject.toml .
-COPY entrypoint.sh .
+ENV PATH="$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
+
+RUN apt-get update && apt-get install --no-install-recommends -y curl build-essential
 
 RUN pip install poetry
 
-RUN poetry export -f requirements.txt --output requirements.txt
+WORKDIR $PYSETUP_PATH
 
-RUN pip install -r requirements.txt
+COPY poetry.lock .
+COPY pyproject.toml .
 
-RUN chmod +x entrypoint.sh
+RUN poetry install --no-dev
 
 COPY . .
 
-ENTRYPOINT ["sh", "/site/entrypoint.sh"]
+CMD ["uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "8000"]
