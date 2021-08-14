@@ -19,11 +19,7 @@ Subscriptions = Table(
 
 
 class Verification(Base, ModelMixin):
-    """
-        Verification
-        :type uuid: str
-        :type user_id: int
-    """
+    """ Verification """
 
     uuid: str = Column(String)
     user_id: int = Column(Integer, ForeignKey('user.id', ondelete='CASCADE'))
@@ -36,17 +32,7 @@ class Verification(Base, ModelMixin):
 
 
 class User(Base, ModelMixin):
-    """
-        User model
-        :type username: str
-        :type email: str
-        :type is_superuser: bool
-        :type is_active: bool
-        :type password: str
-        :type avatar: str
-        :type about: str
-        :type send_message: bool
-    """
+    """ User model """
 
     username: str = Column(String, unique=True, nullable=False)
     email: str = Column(String, unique=True, nullable=False)

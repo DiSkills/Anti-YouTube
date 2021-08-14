@@ -3,6 +3,7 @@ from fastapi.responses import FileResponse
 
 from app import service
 from app.auth.api import auth_router
+from app.categories.api import category_router
 
 routers = APIRouter()
 
@@ -26,3 +27,4 @@ async def get_file(file_name: str) -> FileResponse:
     return await service.get_file(file_name)
 
 routers.include_router(auth_router, prefix='/auth', tags=['auth'])
+routers.include_router(category_router, prefix='/categories', tags=['categories'])
