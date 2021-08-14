@@ -1,4 +1,4 @@
-from fastapi import APIRouter, status, Depends, Form
+from fastapi import APIRouter, status, Depends, Form, UploadFile, File
 
 from app.auth import service
 from app.auth.models import User
@@ -169,3 +169,17 @@ async def change_data(schema: ChangeUserData, user: User = Depends(is_active)):
     async with async_session() as session:
         async with session.begin():
             return await service.change_data(session, schema, user)
+
+
+@auth_router.post(
+    '/avatar',
+    response_model=ChangeUserDataResponse,
+    status_code=status.HTTP_200_OK,
+    description='Upload avatar',
+    response_description='Upload avatar',
+    name='Upload avatar',
+)
+async def upload_avatar(avatar: UploadFile = File(...), user: User = Depends(is_active)):
+    async with async_session() as session:
+        async with session.begin():
+            return await service.upload_avatar(session, avatar, user)

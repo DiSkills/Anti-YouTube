@@ -1,4 +1,6 @@
 import asyncio
+import os
+import shutil
 from unittest import TestCase
 
 import jwt
@@ -25,14 +27,13 @@ from app.auth.permission import is_authenticated, is_active, is_superuser
 from app.auth.schemas import (
     RegisterUser,
     VerificationUUID,
-    LoginUser,
     RefreshToken,
     Password,
     ChangeUserDataResponse,
     ChangeUserData,
 )
 from app.auth.tokens import ALGORITHM, create_password_reset_token
-from app.config import API_V1_URL, SECRET_KEY
+from app.config import API_V1_URL, SECRET_KEY, MEDIA_ROOT
 from app.db import Base, engine, AsyncSession
 
 
@@ -68,10 +69,12 @@ class AuthTestCase(TestCase):
         }
         self.url = API_V1_URL + '/auth'
         self.loop(create_all())
+        os.mkdir(MEDIA_ROOT)
 
     def tearDown(self) -> None:
         self.loop(self.session.close())
         self.loop(drop_all())
+        shutil.rmtree(MEDIA_ROOT)
 
     def test_reset_password_request(self):
         self.client.post(self.url + '/register', json=self.data)

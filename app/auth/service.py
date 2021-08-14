@@ -1,7 +1,8 @@
+from datetime import datetime
 from typing import Dict, Any
 from uuid import uuid4
 
-from fastapi import status, HTTPException
+from fastapi import status, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.crud import user_crud, verification_crud
@@ -13,11 +14,13 @@ from app.auth.schemas import (
     LoginUser,
     RefreshToken,
     Password,
-    ChangeUserData,
+    ChangeUserData, UploadAvatar,
 )
 from app.auth.security import get_password_hash, verify_password
 from app.auth.send_emails import send_new_account_email, send_reset_password_email, send_username_email
 from app.auth.tokens import create_token, verify_refresh_token, create_password_reset_token, verify_password_reset_token
+from app.config import MEDIA_ROOT
+from app.files import remove_file, write_file
 
 
 async def refresh(db: AsyncSession, schema: RefreshToken):
@@ -269,4 +272,32 @@ async def change_data(db: AsyncSession, schema: ChangeUserData, user: User) -> D
         :rtype: dict
     """
     user = await user_crud.update(db, user.id, schema)
+    return user.__dict__
+
+
+async def upload_avatar(db: AsyncSession, avatar: UploadFile, user: User) -> Dict[str, Any]:
+    """
+        Upload avatar
+        :param db: DB
+        :type db: AsyncSession
+        :param avatar: Avatar
+        :type avatar: UploadFile
+        :param user: User
+        :type user: User
+        :return: User
+        :rtype: dict
+        :raise HTTPException 400: Video format not png or jpeg
+    """
+
+    if avatar.content_type not in ('image/png', 'image/jpeg'):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Avatar only format in jpeg or png')
+
+    if MEDIA_ROOT in user.avatar:
+        remove_file(user.avatar)
+
+    avatar_name = f'{MEDIA_ROOT}{datetime.utcnow().timestamp()}.{avatar.filename.split(".")[-1]}'
+
+    await write_file(avatar_name, avatar)
+
+    user = await user_crud.update(db, user.id, UploadAvatar(avatar=avatar_name))
     return user.__dict__

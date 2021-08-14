@@ -85,7 +85,12 @@ class ChangeUserData(BaseModel):
     send_message: bool = True
 
 
-class ChangeUserDataResponse(ChangeUserData):
-    """ Change user data response """
+class UploadAvatar(BaseModel):
+    """ Upload avatar """
 
     avatar: str
+
+
+class ChangeUserDataResponse(ChangeUserData, UploadAvatar):
+    """ Change user data response """
+    pass
