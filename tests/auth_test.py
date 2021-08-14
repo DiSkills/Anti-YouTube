@@ -97,7 +97,7 @@ class AuthTestCase(TestCase):
         self.assertEqual(response.json(), {'msg': 'Password has been reset'})
 
         tokens = self.client.post(
-            self.url + '/login', json={'username': 'test', 'password': 'test123456'}
+            self.url + '/login', data={'username': 'test', 'password': 'test123456'}
         ).json()
 
         response = self.client.post(
@@ -144,7 +144,7 @@ class AuthTestCase(TestCase):
         self.assertEqual(response, {'msg': 'Password has been reset'})
 
         tokens = self.client.post(
-            self.url + '/login', json={'username': 'test', 'password': 'test123456'}
+            self.url + '/login', data={'username': 'test', 'password': 'test123456'}
         ).json()
 
         with self.assertRaises(HTTPException) as error:
@@ -171,7 +171,7 @@ class AuthTestCase(TestCase):
 
     def test_following_request(self):
         self.client.post(self.url + '/register', json=self.data)
-        tokens = self.client.post(self.url + '/login', json={'username': 'test', 'password': 'test1234'})
+        tokens = self.client.post(self.url + '/login', data={'username': 'test', 'password': 'test1234'})
         verification = self.loop(verification_crud.get(self.session, user_id=1)).__dict__
         self.client.post(self.url + '/activate', json={'uuid': verification['uuid']})
 
@@ -272,7 +272,7 @@ class AuthTestCase(TestCase):
             self.loop(is_authenticated('test'))
 
         self.client.post(self.url + '/register', json=self.data)
-        tokens = self.client.post(self.url + '/login', json={'username': 'test', 'password': 'test1234'})
+        tokens = self.client.post(self.url + '/login', data={'username': 'test', 'password': 'test1234'})
         response = self.loop(is_authenticated(tokens.json()['access_token']))
         self.assertEqual(response.id, 1)
 
@@ -443,7 +443,7 @@ class AuthTestCase(TestCase):
     def test_login_request(self):
         self.client.post(self.url + '/register', json=self.data)
 
-        response = self.client.post(self.url + '/login', json={'username': 'test', 'password': 'test1234'})
+        response = self.client.post(self.url + '/login', data={'username': 'test', 'password': 'test1234'})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['token_type'], 'bearer')
         self.assertEqual('access_token' and 'refresh_token' in response.json(), True)
@@ -454,18 +454,18 @@ class AuthTestCase(TestCase):
             jwt.decode(response.json()['refresh_token'], SECRET_KEY, algorithms=[ALGORITHM])['username'], 'test'
         )
 
-        response = self.client.post(self.url + '/login', json={'username': 'admin', 'password': 'test1234'})
+        response = self.client.post(self.url + '/login', data={'username': 'admin', 'password': 'test1234'})
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json(), {'detail': 'User not found'})
 
-        response = self.client.post(self.url + '/login', json={'username': 'test', 'password': 'test'})
+        response = self.client.post(self.url + '/login', data={'username': 'test', 'password': 'test'})
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json(), {'detail': 'Password mismatch'})
 
     def test_login(self):
         self.client.post(self.url + '/register', json=self.data)
 
-        response = self.loop(login(LoginUser(username='test', password='test1234')))
+        response = self.loop(login(username='test', password='test1234'))
         self.assertEqual(response['token_type'], 'bearer')
         self.assertEqual('access_token' and 'refresh_token' in response, True)
         self.assertEqual(
@@ -476,15 +476,15 @@ class AuthTestCase(TestCase):
         )
 
         with self.assertRaises(HTTPException) as error:
-            self.loop(login(LoginUser(username='admin', password='test1234')))
+            self.loop(login(username='admin', password='test1234'))
 
         with self.assertRaises(HTTPException) as error:
-            self.loop(login(LoginUser(username='test', password='test')))
+            self.loop(login(username='test', password='test'))
 
     def test_refresh_token_request(self):
         self.client.post(self.url + '/register', json=self.data)
 
-        tokens = self.client.post(self.url + '/login', json={'username': 'test', 'password': 'test1234'})
+        tokens = self.client.post(self.url + '/login', data={'username': 'test', 'password': 'test1234'})
 
         response = self.client.post(self.url + '/refresh', json={'refresh_token': tokens.json()['refresh_token']})
         self.assertEqual('access_token' in response.json(), True)
@@ -516,7 +516,7 @@ class AuthTestCase(TestCase):
     def test_refresh_token(self):
         self.client.post(self.url + '/register', json=self.data)
 
-        tokens = self.client.post(self.url + '/login', json={'username': 'test', 'password': 'test1234'})
+        tokens = self.client.post(self.url + '/login', data={'username': 'test', 'password': 'test1234'})
 
         response = self.loop(refresh(RefreshToken(refresh_token=tokens.json()['refresh_token'])))
         self.assertEqual('access_token' in response, True)
@@ -567,7 +567,7 @@ class AuthTestCase(TestCase):
         verification = self.loop(verification_crud.get(self.session, user_id=1))
         self.client.post(self.url + '/activate', json={'uuid': verification.uuid})
 
-        tokens = self.client.post(self.url + '/login', json={'username': 'test', 'password': 'test1234'})
+        tokens = self.client.post(self.url + '/login', data={'username': 'test', 'password': 'test1234'})
 
         headers = {'Authorization': f'Bearer {tokens.json()["access_token"]}'}
 

@@ -94,17 +94,21 @@ async def activate(db: AsyncSession, schema: VerificationUUID) -> Dict[str, str]
     return {'msg': 'Account has been is activated'}
 
 
-async def login(db: AsyncSession, schema: LoginUser) -> Dict[str, str]:
+async def login(db: AsyncSession, username: str, password: str) -> Dict[str, str]:
     """
         Login
         :param db: DB
         :type db: AsyncSession
-        :param schema: Login data
-        :type schema: LoginUser
+        :param username: Username
+        :type username: str
+        :param password: Password
+        :type password: str
         :return: Tokens
         :rtype: dict
         :raise HTTPException 400: User not exist or password mismatch
     """
+
+    schema = LoginUser(username=username, password=password)
 
     if not await user_crud.exists(db, username=schema.username):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='User not found')

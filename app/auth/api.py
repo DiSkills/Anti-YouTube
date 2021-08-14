@@ -1,4 +1,4 @@
-from fastapi import APIRouter, status, Depends
+from fastapi import APIRouter, status, Depends, Form
 
 from app.auth import service
 from app.auth.models import User
@@ -6,7 +6,6 @@ from app.auth.permission import is_active
 from app.auth.schemas import (
     RegisterUser,
     VerificationUUID,
-    LoginUser,
     Tokens,
     RefreshToken,
     AccessToken,
@@ -70,10 +69,10 @@ async def activate(schema: VerificationUUID):
     response_description='Tokens',
     name='Login',
 )
-async def login(schema: LoginUser):
+async def login(username: str = Form(...), password: str = Form(...)):
     async with async_session() as session:
         async with session.begin():
-            return await service.login(session, schema)
+            return await service.login(session, username, password)
 
 
 @auth_router.post(

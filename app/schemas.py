@@ -4,33 +4,20 @@ from pydantic import BaseModel
 
 
 class Message(BaseModel):
-    """
-        Message
-        :type msg: str
-    """
+    """ Message """
 
     msg: str
 
 
 class Votes(BaseModel):
-    """
-        Votes
-        :type likes: int
-        :type dislikes: int
-    """
+    """ Votes """
 
     likes: int
     dislikes: int
 
 
 class Paginate(BaseModel):
-    """
-        Paginate
-        :type page: int
-        :type previous: Optional[str]
-        :type next: Optional[str]
-        :type results: List
-    """
+    """ Paginate """
 
     page: int
     previous: Optional[str]

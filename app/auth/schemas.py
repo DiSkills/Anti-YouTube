@@ -2,11 +2,7 @@ from pydantic import BaseModel, EmailStr, validator
 
 
 class Password(BaseModel):
-    """
-        Password
-        :type password: str
-        :type confirm_password: str
-    """
+    """ Password """
 
     password: str
     confirm_password: str
@@ -25,13 +21,7 @@ class Password(BaseModel):
 
 
 class UserBase(BaseModel):
-    """
-        User base
-        :type username: str
-        :type email: EmailStr
-        :type about: str
-        :type send_message: bool
-    """
+    """ User base """
 
     username: str
     email: EmailStr
@@ -46,83 +36,56 @@ class RegisterUser(UserBase, Password):
 
 
 class VerificationUUID(BaseModel):
-    """
-        Verification uuid
-        :type uuid: str
-    """
+    """ Verification uuid """
 
     uuid: str
 
 
 class UserUpdate(BaseModel):
-    """
-        Update user active
-        :type is_active: bool
-    """
+    """ Update user active """
 
     is_active: bool = True
 
 
 class LoginUser(BaseModel):
-    """
-        Login user
-        :type username: str
-        :type password: str
-    """
+    """ Login user """
 
     username: str
     password: str
 
 
 class RefreshToken(BaseModel):
-    """
-        Refresh token
-        :type refresh_token: str
-    """
+    """ Refresh token """
+
     refresh_token: str
 
 
 class AccessToken(BaseModel):
-    """
-        Access token
-        :type access_token: str
-    """
+    """ Access token """
+
     access_token: str
 
 
 class Tokens(RefreshToken, AccessToken):
-    """
-        Login tokens
-        :type token_type: str
-    """
+    """ Login tokens """
 
     token_type: str
 
 
 class TokenPayload(BaseModel):
-    """
-        Token payload
-        :type user_id: int
-    """
+    """ Token payload """
 
     user_id: int
 
 
 class ChangeUserData(BaseModel):
-    """
-        Change user data
-        :type about: str
-        :type send_message: bool
-    """
+    """ Change user data """
 
     about: str
     send_message: bool = True
 
 
 class ChangeUserDataResponse(ChangeUserData):
-    """
-        Change user data response
-        :type avatar: str
-    """
+    """ Change user data response """
 
     avatar: str
