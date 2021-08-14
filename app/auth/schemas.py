@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel, EmailStr, validator
 
 
@@ -101,3 +103,14 @@ class RegisterAdmin(RegisterUser):
 
     is_active: bool = True
     is_superuser: bool = True
+
+
+class UserPublic(BaseModel):
+    """
+        User public
+    """
+
+    username: str
+    avatar: Optional[str]
+    about: str
+    id: int
