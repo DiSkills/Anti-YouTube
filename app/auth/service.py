@@ -14,7 +14,8 @@ from app.auth.schemas import (
     LoginUser,
     RefreshToken,
     Password,
-    ChangeUserData, UploadAvatar,
+    ChangeUserData,
+    UploadAvatar,
 )
 from app.auth.security import get_password_hash, verify_password
 from app.auth.send_emails import send_new_account_email, send_reset_password_email, send_username_email

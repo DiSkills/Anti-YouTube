@@ -4,7 +4,7 @@ import shutil
 from unittest import TestCase
 
 import jwt
-from fastapi import HTTPException
+from fastapi import HTTPException, UploadFile
 from fastapi.testclient import TestClient
 from sqlalchemy import update
 
@@ -21,6 +21,7 @@ from app.auth.api import (
     get_username,
     get_data,
     change_data,
+    upload_avatar,
 )
 from app.auth.crud import user_crud, verification_crud
 from app.auth.permission import is_authenticated, is_active, is_superuser
@@ -75,6 +76,73 @@ class AuthTestCase(TestCase):
         self.loop(self.session.close())
         self.loop(drop_all())
         shutil.rmtree(MEDIA_ROOT)
+
+    def test_upload_avatar_requests(self):
+        self.client.post(self.url + '/register', json=self.data)
+        verification = self.loop(verification_crud.get(self.session, user_id=1)).__dict__
+        self.client.post(self.url + '/activate', json={'uuid': verification['uuid']})
+        tokens = self.client.post(self.url + '/login', data={'username': 'test', 'password': 'test1234'})
+
+        user = self.loop(user_crud.get(self.session, id=1))
+
+        headers = {'Authorization': f'Bearer {tokens.json()["access_token"]}'}
+
+        self.assertEqual(os.path.exists(user.avatar), False)
+
+        with open('tests/image.png', 'rb') as f:
+            response = self.client.post(
+                self.url + '/avatar', headers=headers, files={'avatar': ('image.png', f, 'image/png')}
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertNotEqual(response.json()['avatar'], user.avatar)
+
+        self.assertEqual(os.path.exists(response.json()['avatar']), True)
+
+        with open('tests/image.png', 'rb') as f:
+            response_2 = self.client.post(
+                self.url + '/avatar', headers=headers, files={'avatar': ('image.png', f, 'image/png')}
+            )
+        self.assertEqual(response_2.status_code, 200)
+
+        self.assertEqual(os.path.exists(response.json()['avatar']), False)
+        self.assertEqual(os.path.exists(response_2.json()['avatar']), True)
+
+        with open('tests/image.gif', 'rb') as f:
+            response = self.client.post(
+                self.url + '/avatar', headers=headers, files={'avatar': ('image.gif', f, 'image/gif')}
+            )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'detail': 'Avatar only format in jpeg or png'})
+
+        self.assertEqual(os.path.exists(response_2.json()['avatar']), True)
+
+    def test_upload_image(self):
+        self.client.post(self.url + '/register', json=self.data)
+        verification = self.loop(verification_crud.get(self.session, user_id=1)).__dict__
+        self.client.post(self.url + '/activate', json={'uuid': verification['uuid']})
+        user = self.loop(user_crud.get(self.session, id=1))
+
+        self.assertEqual(os.path.exists(user.avatar), False)
+
+        with open('tests/image.png', 'rb') as f:
+            response = self.loop(upload_avatar(UploadFile(f.name, f, content_type='image/png'), user))
+        self.assertNotEqual(response['avatar'], user.avatar)
+
+        self.assertEqual(os.path.exists(response['avatar']), True)
+        self.loop(self.session.commit())
+
+        with open('tests/image.png', 'rb') as f:
+            user = self.loop(user_crud.get(self.session, id=1))
+            response_2 = self.loop(upload_avatar(UploadFile(f.name, f, content_type='image/png'), user))
+        self.assertNotEqual(response_2['avatar'], user.avatar)
+        self.assertNotEqual(response_2['avatar'], response['avatar'])
+
+        self.assertEqual(os.path.exists(response_2['avatar']), True)
+        self.assertEqual(os.path.exists(response['avatar']), False)
+
+        with self.assertRaises(HTTPException) as error:
+            with open('tests/image.gif', 'rb') as f:
+                self.loop(upload_avatar(UploadFile(f.name, f, content_type='image/gif'), user))
 
     def test_reset_password_request(self):
         self.client.post(self.url + '/register', json=self.data)
