@@ -13,7 +13,7 @@ from app.files import write_file, remove_file
 from app.service import paginate
 from app.videos.crud import video_crud, vote_crud, history_crud
 from app.videos.models import Video
-from app.videos.schemas import CreateVideo, CreateVote, UpdateVideoViews, CreateHistory
+from app.videos.schemas import CreateVideo, CreateVote, UpdateVideoViews, CreateHistory, VideoUpdate
 
 
 async def validation(db: AsyncSession, video_file: UploadFile, preview_file: UploadFile, category_id: int) -> None:
@@ -275,3 +275,53 @@ async def add_to_history(db: AsyncSession, request: Request, pk: int) -> Dict[st
         await history_crud.create(db, CreateHistory(user_id=user.id, video_id=pk))
         return {'msg': 'Add to history and new view'}
     return {'msg': 'New view'}
+
+
+async def update_video(
+        db: AsyncSession, pk: int, schema: VideoUpdate, video_file: UploadFile, preview_file: UploadFile, user: User
+) -> Dict[str, Any]:
+    """
+        Update video
+        :param db: DB
+        :type db: AsyncSession
+        :param pk: ID
+        :type pk: int
+        :param schema: Update data
+        :type schema: VideoUpdate
+        :param video_file: Video
+        :type video_file: UploadFile
+        :param preview_file: Preview
+        :type preview_file: UploadFile
+        :param user: User
+        :type user: User
+        :return: Updated video
+        :rtype: dict
+        :raise HTTPException 400: Video not exist
+        :raise HTTPException 403: User not owner or superuser
+    """
+
+    if not await video_crud.exists(db, id=pk):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Video not found')
+
+    video = await video_crud.get(db, id=pk)
+
+    if video.user_id != user.id and not user.is_superuser:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You not published this video')
+
+    await validation(db, video_file, preview_file, schema.category_id)
+
+    video_name = f'{MEDIA_ROOT}{datetime.utcnow().timestamp()}.{video_file.filename.split(".")[-1]}'
+    preview_name = f'{MEDIA_ROOT}{datetime.utcnow().timestamp()}.{preview_file.filename.split(".")[-1]}'
+
+    remove_file(video.video_file)
+    remove_file(video.preview_file)
+
+    await write_file(video_name, video_file)
+    await write_file(preview_name, preview_file)
+    video_updated = await video_crud.update(db, video.id, schema, video_file=video_name, preview_file=preview_name)
+    return {
+        **video_updated.__dict__,
+        'user': video_updated.user.__dict__,
+        'category': video_updated.category.__dict__,
+        'votes': video_crud.get_votes(video),
+    }

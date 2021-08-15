@@ -6,7 +6,7 @@ from app.auth.permission import is_active, is_superuser
 from app.db import async_session
 from app.schemas import Message
 from app.videos import service
-from app.videos.schemas import GetVideo, CreateVideo, VideoPaginate, CreateVote
+from app.videos.schemas import GetVideo, CreateVideo, VideoPaginate, CreateVote, VideoUpdate
 
 videos_router = APIRouter()
 
@@ -128,3 +128,26 @@ async def add_to_history(request: Request, pk: int):
     async with async_session() as session:
         async with session.begin():
             return await service.add_to_history(session, request, pk)
+
+
+@videos_router.put(
+    '/{pk}',
+    status_code=status.HTTP_200_OK,
+    response_model=GetVideo,
+    description='Update video',
+    response_description='Update video',
+    name='Update video',
+)
+async def update_video(
+        pk: int,
+        title: str = Form(...),
+        description: str = Form(...),
+        category_id: int = Form(...),
+        video_file: UploadFile = File(...),
+        preview_file: UploadFile = File(...),
+        user: User = Depends(is_active),
+):
+    async with async_session() as session:
+        async with session.begin():
+            schema: VideoUpdate = VideoUpdate(title=title, description=description, category_id=category_id)
+            return await service.update_video(session, pk, schema, video_file, preview_file, user)
