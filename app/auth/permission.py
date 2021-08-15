@@ -1,5 +1,5 @@
 import jwt
-from fastapi import Security, HTTPException, status, Depends
+from fastapi import Security, HTTPException, status, Depends, Request
 from fastapi.security import OAuth2PasswordBearer
 
 from app.auth.crud import user_crud
@@ -71,3 +71,18 @@ async def is_superuser(user: User = Depends(is_active)) -> User:
     if not user.is_superuser:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='User not superuser')
     return user
+
+
+async def is_auth_or_anonymous(request: Request):
+    """
+        If user return user else None
+        :param request: Request
+        :type request: Request
+        :return: User or None
+        :rtype: dict
+    """
+    if 'authorization' in request.headers.keys():
+        try:
+            return await is_active(await is_authenticated(request.headers.get('authorization').split(' ')[-1]))
+        except:
+            return

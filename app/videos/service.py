@@ -6,13 +6,14 @@ from fastapi import UploadFile, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import User
+from app.auth.permission import is_auth_or_anonymous
 from app.categories.crud import category_crud
 from app.config import MEDIA_ROOT, SERVER_HOST, API_V1_URL
 from app.files import write_file, remove_file
 from app.service import paginate
-from app.videos.crud import video_crud, vote_crud
+from app.videos.crud import video_crud, vote_crud, history_crud
 from app.videos.models import Video
-from app.videos.schemas import CreateVideo, CreateVote
+from app.videos.schemas import CreateVideo, CreateVote, UpdateVideoViews, CreateHistory
 
 
 async def validation(db: AsyncSession, video_file: UploadFile, preview_file: UploadFile, category_id: int) -> None:
@@ -247,3 +248,30 @@ async def create_vote(db: AsyncSession, schema: CreateVote, user: User) -> Dict[
 
     await vote_crud.create(db, schema, user_id=user.id)
     return await get_video(db, schema.video_id)
+
+
+async def add_to_history(db: AsyncSession, request: Request, pk: int) -> Dict[str, str]:
+    """
+        Add to history
+        :param db: DB
+        :type db: AsyncSession
+        :param request: Request
+        :type request: Request
+        :param pk: Video ID
+        :type pk: int
+        :return: Message
+        :rtype: dict
+    """
+
+    if not await video_crud.exists(db, id=pk):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Video not found')
+
+    video = await video_crud.get(db, id=pk)
+    await video_crud.update(db, pk, UpdateVideoViews(views=int(video.views) + 1))
+
+    user = await is_auth_or_anonymous(request)
+
+    if user:
+        await history_crud.create(db, CreateHistory(user_id=user.id, video_id=pk))
+        return {'msg': 'Add to history and new view'}
+    return {'msg': 'New view'}

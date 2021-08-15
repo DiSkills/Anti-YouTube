@@ -114,3 +114,17 @@ async def create_vote(schema: CreateVote, user: User = Depends(is_active)):
     async with async_session() as session:
         async with session.begin():
             return await service.create_vote(session, schema, user)
+
+
+@videos_router.post(
+    '/add-to-history',
+    response_model=Message,
+    status_code=status.HTTP_200_OK,
+    description='Add to history and +1 view',
+    response_description='Add to history and +1 view',
+    name='Add to history',
+)
+async def add_to_history(request: Request, pk: int):
+    async with async_session() as session:
+        async with session.begin():
+            return await service.add_to_history(session, request, pk)

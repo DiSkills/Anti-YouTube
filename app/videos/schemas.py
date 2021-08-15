@@ -69,6 +69,12 @@ class CreateVote(BaseModel):
         return vote
 
 
+class UpdateVideoViews(BaseModel):
+    """ Update video """
+
+    views: int
+
+
 class CreateHistory(BaseModel):
     """ Create history """
 

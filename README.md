@@ -1,49 +1,5 @@
 # Anti-YouTube: FastAPI
 
-
-# `About project`
-
-    YouTube-like video hosting
-
-    Author:
-        _Counter021_
-
-
-#`TODO`
-    
-    refactor
-    
-    types in crud
-    
-    docs paginate
-    
-    activation in front
-    
-    send messages for comment
-    
-    add clear history
-    
-    search videos
-    
-    tests comments
-    
-    export user data, (mb websocket)
-    
-    tests all requests not (async and database)
-    
-    add docs in api, docs (check and add when need)
-    
-    docker script createsuperuser
-    
-    tests channel
-    
-    2-authorization (email code) {maybe}
-    
-    trends, admin, playlists
-    
-    pagination in categories and history
-
-
 # `Installing`
 
     create database postgres
@@ -57,7 +13,7 @@
     python main.py
 
 
-# `Installing Docker`
+# `Installing Docker (don't working)`
 
     create file "config.docker.env" how "config.docker.example.env"
 

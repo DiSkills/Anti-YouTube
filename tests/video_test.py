@@ -11,8 +11,8 @@ from app.app import app
 from app.auth.crud import verification_crud, user_crud
 from app.config import MEDIA_ROOT, API_V1_URL
 from app.db import engine
-from app.videos.api import create_video, get_video, get_all_videos, delete_video, create_vote
-from app.videos.crud import video_crud, vote_crud
+from app.videos.api import create_video, get_video, get_all_videos, delete_video, create_vote, add_to_history
+from app.videos.crud import video_crud, vote_crud, history_crud
 from app.videos.schemas import CreateVote
 from tests import create_all, drop_all, async_loop
 
@@ -442,3 +442,39 @@ class VideosTestCase(TestCase):
         self.assertEqual(response.json()['votes'], {'dislikes': 1, 'likes': 1})
 
         self.assertEqual(len(async_loop(vote_crud.all(self.session))), 4)
+
+        # History add
+        self.assertEqual(len(async_loop(history_crud.all(self.session))), 0)
+        self.assertEqual(async_loop(video_crud.get(self.session, id=2)).views, 0)
+
+        response = self.client.post(self.url + '/add-to-history?pk=2', headers=headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'msg': 'Add to history and new view'})
+
+        self.assertEqual(len(async_loop(history_crud.all(self.session))), 1)
+        self.assertEqual(async_loop(video_crud.get(self.session, id=2)).views, 1)
+
+        response = self.client.post(self.url + '/add-to-history?pk=143', headers=headers)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'detail': 'Video not found'})
+
+        self.assertEqual(async_loop(video_crud.get(self.session, id=3)).views, 0)
+
+        self.client.post(self.url + '/add-to-history?pk=3', headers=headers)
+        self.assertEqual(len(async_loop(history_crud.all(self.session))), 2)
+        self.assertEqual(async_loop(video_crud.get(self.session, id=2)).views, 1)
+        self.assertEqual(async_loop(video_crud.get(self.session, id=3)).views, 1)
+
+        # History get
+        response = self.client.get(API_V1_URL + '/auth/history', headers=headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()), 2)
+        self.assertEqual(response.json()[0]['id'], 3)
+        self.assertEqual(response.json()[1]['id'], 2)
+
+        # New view
+        response = self.client.post(self.url + '/add-to-history?pk=2')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'msg': 'New view'})
+        self.assertEqual(async_loop(video_crud.get(self.session, id=2)).views, 2)
+        self.assertEqual(len(async_loop(history_crud.all(self.session))), 2)
