@@ -1,4 +1,3 @@
-import asyncio
 import os
 import shutil
 from unittest import TestCase
@@ -11,29 +10,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.app import app
 from app.auth.crud import verification_crud, user_crud
 from app.config import MEDIA_ROOT, API_V1_URL
-from app.db import engine, Base
+from app.db import engine
 from app.videos.api import create_video, get_video, get_all_videos
 from app.videos.crud import video_crud
-
-
-async def create_all():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-
-async def drop_all():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+from tests import create_all, drop_all, async_loop
 
 
 class VideosTestCase(TestCase):
-
-    def loop(self, function):
-        loop = asyncio.get_event_loop()
-        try:
-            return loop.run_until_complete(function)
-        finally:
-            pass
 
     def setUp(self) -> None:
         self.session = AsyncSession(engine)
@@ -55,34 +38,34 @@ class VideosTestCase(TestCase):
             'category_id': 1,
         }
         self.url = API_V1_URL + '/videos'
-        self.loop(create_all())
+        async_loop(create_all())
         os.mkdir(MEDIA_ROOT)
 
     def tearDown(self) -> None:
-        self.loop(self.session.close())
-        self.loop(drop_all())
+        async_loop(self.session.close())
+        async_loop(drop_all())
         shutil.rmtree(MEDIA_ROOT)
 
     def test_videos(self):
         self.client.post(API_V1_URL + '/auth/register', json=self.user_data)
-        verification = self.loop(verification_crud.get(self.session, user_id=1)).__dict__
+        verification = async_loop(verification_crud.get(self.session, user_id=1)).__dict__
         self.client.post(API_V1_URL + '/auth/activate', json={'uuid': verification['uuid']})
 
-        self.loop(self.session.execute(update(user_crud.model).filter_by(id=1).values(is_superuser=True)))
-        self.loop(self.session.commit())
+        async_loop(self.session.execute(update(user_crud.model).filter_by(id=1).values(is_superuser=True)))
+        async_loop(self.session.commit())
 
         tokens = self.client.post(API_V1_URL + '/auth/login', data={'username': 'test', 'password': 'test1234'})
         headers = {'Authorization': f'Bearer {tokens.json()["access_token"]}'}
         self.client.post(API_V1_URL + '/categories/', json=self.category_data, headers=headers)
 
-        user = self.loop(user_crud.get(self.session, id=1))
+        user = async_loop(user_crud.get(self.session, id=1))
 
-        self.assertEqual(len(self.loop(video_crud.all(self.session))), 0)
+        self.assertEqual(len(async_loop(video_crud.all(self.session))), 0)
 
         # Create
         with open('tests/image.png', 'rb') as preview:
             with open('tests/test.mp4', 'rb') as video:
-                response = self.loop(
+                response = async_loop(
                     create_video(
                         **self.data,
                         video_file=UploadFile(video.name, video, content_type='video/mp4'),
@@ -95,12 +78,12 @@ class VideosTestCase(TestCase):
         self.assertEqual(os.path.exists(response['video_file']), True)
         self.assertEqual(os.path.exists(response['preview_file']), True)
 
-        self.assertEqual(len(self.loop(video_crud.all(self.session))), 1)
+        self.assertEqual(len(async_loop(video_crud.all(self.session))), 1)
 
         with self.assertRaises(HTTPException) as error:
             with open('tests/image.gif', 'rb') as preview:
                 with open('tests/test.mp4', 'rb') as video:
-                    self.loop(
+                    async_loop(
                         create_video(
                             **self.data,
                             video_file=UploadFile(video.name, video, content_type='video/mp4'),
@@ -112,7 +95,7 @@ class VideosTestCase(TestCase):
         with self.assertRaises(HTTPException) as error:
             with open('tests/image.png', 'rb') as preview:
                 with open('tests/image.png', 'rb') as video:
-                    self.loop(
+                    async_loop(
                         create_video(
                             **self.data,
                             video_file=UploadFile(video.name, video, content_type='image/png'),
@@ -146,7 +129,7 @@ class VideosTestCase(TestCase):
         # Get all
 
         # Page №1
-        response = self.loop(get_all_videos(1))
+        response = async_loop(get_all_videos(1))
         self.assertEqual(response['next'], 'http://localhost:8000/api/v1/videos/?page=2')
         self.assertEqual(len(response['results']), 2)
         self.assertEqual(response['results'][0]['id'], 3)
@@ -154,7 +137,7 @@ class VideosTestCase(TestCase):
         self.assertEqual(response['previous'], None)
 
         # Page №2
-        response = self.loop(get_all_videos(2))
+        response = async_loop(get_all_videos(2))
         self.assertEqual(response['next'], None)
         self.assertEqual(len(response['results']), 1)
         self.assertEqual(response['results'][0]['id'], 1)
@@ -162,28 +145,28 @@ class VideosTestCase(TestCase):
 
         # Page №3 (error)
         with self.assertRaises(HTTPException) as error:
-            self.loop(get_all_videos(3))
+            async_loop(get_all_videos(3))
 
         # Get
-        response = self.loop(get_video(1))
+        response = async_loop(get_video(1))
         self.assertEqual(response['id'], 1)
 
         with self.assertRaises(HTTPException) as error:
-            self.loop(get_video(143))
+            async_loop(get_video(143))
 
     def test_videos_request(self):
         self.client.post(API_V1_URL + '/auth/register', json=self.user_data)
-        verification = self.loop(verification_crud.get(self.session, user_id=1)).__dict__
+        verification = async_loop(verification_crud.get(self.session, user_id=1)).__dict__
         self.client.post(API_V1_URL + '/auth/activate', json={'uuid': verification['uuid']})
         tokens = self.client.post(API_V1_URL + '/auth/login', data={'username': 'test', 'password': 'test1234'})
 
-        self.loop(self.session.execute(update(user_crud.model).filter_by(id=1).values(is_superuser=True)))
-        self.loop(self.session.commit())
+        async_loop(self.session.execute(update(user_crud.model).filter_by(id=1).values(is_superuser=True)))
+        async_loop(self.session.commit())
 
         headers = {'Authorization': f'Bearer {tokens.json()["access_token"]}'}
         self.client.post(API_V1_URL + '/categories/', json=self.category_data, headers=headers)
 
-        self.assertEqual(len(self.loop(video_crud.all(self.session))), 0)
+        self.assertEqual(len(async_loop(video_crud.all(self.session))), 0)
 
         # Create
         with open('tests/image.png', 'rb') as preview:
@@ -203,7 +186,7 @@ class VideosTestCase(TestCase):
         self.assertEqual(os.path.exists(response.json()['video_file']), True)
         self.assertEqual(os.path.exists(response.json()['preview_file']), True)
 
-        self.assertEqual(len(self.loop(video_crud.all(self.session))), 1)
+        self.assertEqual(len(async_loop(video_crud.all(self.session))), 1)
 
         with open('tests/image.gif', 'rb') as preview:
             with open('tests/test.mp4', 'rb') as video:

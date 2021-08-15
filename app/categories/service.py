@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.categories.crud import category_crud
 from app.categories.schemas import CreateCategory, UpdateCategory
+from app.videos.crud import video_crud
 
 
 async def get_all_categories(db: AsyncSession) -> List[Dict[str, Union[str, int]]]:
@@ -86,3 +87,26 @@ async def delete_category(db: AsyncSession, pk) -> Dict[str, str]:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Category not found')
     await category_crud.remove(db, id=pk)
     return {'msg': 'Category has been deleted'}
+
+
+async def get_videos_for_category(db: AsyncSession, category_pk: int):
+    """
+        Get videos for category
+        :param db: DB
+        :type db: AsyncSession
+        :param category_pk: Category ID
+        :type category_pk: int
+        :return: Videos
+        :rtype: list
+    """
+
+    if not await category_crud.exists(db, id=category_pk):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Category not found')
+
+    return [
+        {
+            **video.__dict__,
+            'category': video.category.__dict__,
+            'user': video.user.__dict__,
+        } for video in await video_crud.filter(db, category_id=category_pk)
+    ]

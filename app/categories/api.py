@@ -7,6 +7,7 @@ from app.categories import service
 from app.categories.schemas import GetCategory, CreateCategory, UpdateCategory
 from app.db import async_session
 from app.schemas import Message
+from app.videos.schemas import GetVideo
 
 category_router = APIRouter()
 
@@ -82,3 +83,17 @@ async def delete_category(pk: int):
     async with async_session() as session:
         async with session.begin():
             return await service.delete_category(session, pk)
+
+
+@category_router.get(
+    '/videos/{category_pk}',
+    response_model=List[GetVideo],
+    status_code=status.HTTP_200_OK,
+    description='Get videos for category',
+    response_description='Get videos for category',
+    name='Get videos',
+)
+async def get_videos_for_category(category_pk: int):
+    async with async_session() as session:
+        async with session.begin():
+            return await service.get_videos_for_category(session, category_pk)

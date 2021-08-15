@@ -17,6 +17,18 @@ class CRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     def __init__(self, model: Type[ModelType]) -> None:
         self.model = model
 
+    async def filter(self, db: AsyncSession, **kwargs) -> List[ModelType]:
+        """
+            Filter
+            :param db: DB
+            :type db: AsyncSession
+            :param kwargs: kwargs
+            :return: Models
+            :rtype: list
+        """
+        query = await db.execute(select(self.model).order_by(self.model.id.desc()).filter_by(**kwargs))
+        return query.scalars()
+
     async def get(self, db: AsyncSession,  **kwargs) -> Optional[ModelType]:
         """
             Get
