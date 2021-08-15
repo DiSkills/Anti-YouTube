@@ -11,7 +11,7 @@ from app.app import app
 from app.auth.crud import verification_crud, user_crud
 from app.config import MEDIA_ROOT, API_V1_URL
 from app.db import engine
-from app.videos.api import create_video, get_video, get_all_videos, delete_video
+from app.videos.api import create_video, get_video, get_all_videos, delete_video, get_streaming_video
 from app.videos.crud import video_crud
 from tests import create_all, drop_all, async_loop
 
@@ -307,5 +307,19 @@ class VideosTestCase(TestCase):
         self.assertEqual(len(async_loop(video_crud.all(self.session))), 2)
 
         response = self.client.delete(self.url + '/1', headers=headers)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'detail': 'Video not found'})
+
+        # Streaming video
+        response = self.client.get(self.url + '/video/2')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.headers, {'content-type': 'video/mp4', 'accept-ranges': 'bytes', 'content-length': '0'}
+        )
+
+        response = self.client.get(self.url + '/video/2', headers={'range': 'bytes=100-'})
+        self.assertEqual(response.status_code, 206)
+
+        response = self.client.get(self.url + '/video/143')
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json(), {'detail': 'Video not found'})
