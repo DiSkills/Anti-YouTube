@@ -28,7 +28,7 @@ async def startup():
         if not TESTS:
             await conn.run_sync(Base.metadata.create_all)
 
-            if DOCKER:
+            if int(DOCKER):
                 await createsuperuser_docker()
 
             if not os.path.exists(MEDIA_ROOT):
