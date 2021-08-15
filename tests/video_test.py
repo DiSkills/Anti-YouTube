@@ -11,8 +11,9 @@ from app.app import app
 from app.auth.crud import verification_crud, user_crud
 from app.config import MEDIA_ROOT, API_V1_URL
 from app.db import engine
-from app.videos.api import create_video, get_video, get_all_videos, delete_video, get_streaming_video
-from app.videos.crud import video_crud
+from app.videos.api import create_video, get_video, get_all_videos, delete_video, create_vote
+from app.videos.crud import video_crud, vote_crud
+from app.videos.schemas import CreateVote
 from tests import create_all, drop_all, async_loop
 
 
@@ -171,6 +172,57 @@ class VideosTestCase(TestCase):
         with self.assertRaises(HTTPException) as error:
             async_loop(delete_video(1))
 
+        # Create vote
+        self.assertEqual(len(async_loop(vote_crud.all(self.session))), 0)
+        response = self.client.get(self.url + '/2')
+        self.assertEqual(response.json()['votes'], {'dislikes': 0, 'likes': 0})
+
+        response = async_loop(create_vote(CreateVote(vote=1, video_id=2), user))
+        self.assertEqual(response['id'], 2)
+        self.assertEqual(response['votes'], {'dislikes': 0, 'likes': 1})
+
+        self.assertEqual(len(async_loop(vote_crud.all(self.session))), 1)
+        response = self.client.get(self.url + '/2')
+        self.assertEqual(response.json()['votes'], {'dislikes': 0, 'likes': 1})
+
+        response = self.client.get(self.url + '/3')
+        self.assertEqual(response.json()['votes'], {'dislikes': 0, 'likes': 0})
+
+        with self.assertRaises(HTTPException) as error:
+            async_loop(create_vote(CreateVote(vote=1, video_id=2), user))
+
+        with self.assertRaises(HTTPException) as error:
+            async_loop(create_vote(CreateVote(vote=1, video_id=143), user))
+
+        with self.assertRaises(ValueError) as error:
+            async_loop(create_vote(CreateVote(vote=35, video_id=2), user))
+
+        with self.assertRaises(ValueError) as error:
+            async_loop(create_vote(CreateVote(vote=-23, video_id=2), user))
+
+        response = async_loop(create_vote(CreateVote(vote=0, video_id=3), user))
+        self.assertEqual(response['id'], 3)
+        self.assertEqual(response['votes'], {'dislikes': 1, 'likes': 0})
+        self.assertEqual(len(async_loop(vote_crud.all(self.session))), 2)
+
+        # 2 user
+        self.client.post(API_V1_URL + '/auth/register', json={**self.user_data, 'username': 'test2', 'email': 'test@exapmple.com'})
+        verification = async_loop(verification_crud.get(self.session, user_id=2)).__dict__
+        self.client.post(API_V1_URL + '/auth/activate', json={'uuid': verification['uuid']})
+
+        user_2 = async_loop(user_crud.get(self.session, id=2))
+
+        response = async_loop(create_vote(CreateVote(vote=1, video_id=2), user_2))
+        self.assertEqual(response['votes'], {'dislikes': 0, 'likes': 2})
+
+        self.assertEqual(len(async_loop(vote_crud.all(self.session))), 3)
+
+        response = async_loop(create_vote(CreateVote(vote=1, video_id=3), user_2))
+
+        self.assertEqual(response['votes'], {'dislikes': 1, 'likes': 1})
+
+        self.assertEqual(len(async_loop(vote_crud.all(self.session))), 4)
+
     def test_videos_request(self):
         self.client.post(API_V1_URL + '/auth/register', json=self.user_data)
         verification = async_loop(verification_crud.get(self.session, user_id=1)).__dict__
@@ -323,3 +375,70 @@ class VideosTestCase(TestCase):
         response = self.client.get(self.url + '/video/143')
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json(), {'detail': 'Video not found'})
+
+        # Create vote
+        self.assertEqual(len(async_loop(vote_crud.all(self.session))), 0)
+        response = self.client.get(self.url + '/2')
+        self.assertEqual(response.json()['votes'], {'dislikes': 0, 'likes': 0})
+
+        response = self.client.post(self.url + '/vote', headers=headers, json={'vote': 1, 'video_id': 2})
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()['id'], 2)
+        self.assertEqual(response.json()['votes'], {'dislikes': 0, 'likes': 1})
+
+        self.assertEqual(len(async_loop(vote_crud.all(self.session))), 1)
+        response = self.client.get(self.url + '/2')
+        self.assertEqual(response.json()['votes'], {'dislikes': 0, 'likes': 1})
+
+        response = self.client.get(self.url + '/3')
+        self.assertEqual(response.json()['votes'], {'dislikes': 0, 'likes': 0})
+
+        response = self.client.post(self.url + '/vote', headers=headers, json={'vote': 1, 'video_id': 2})
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'detail': 'Vote exist'})
+
+        self.assertEqual(len(async_loop(vote_crud.all(self.session))), 1)
+        response = self.client.get(self.url + '/2')
+        self.assertEqual(response.json()['votes'], {'dislikes': 0, 'likes': 1})
+
+        response = self.client.post(self.url + '/vote', headers=headers, json={'vote': 1, 'video_id': 143})
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'detail': 'Video not found'})
+
+        response = self.client.post(self.url + '/vote', headers=headers, json={'vote': 35, 'video_id': 2})
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.json()['detail'][0]['msg'], 'Vote is 0 (dislike) or 1 (like)')
+
+        response = self.client.post(self.url + '/vote', headers=headers, json={'vote': -23, 'video_id': 2})
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.json()['detail'][0]['msg'], 'Vote is 0 (dislike) or 1 (like)')
+
+        self.assertEqual(len(async_loop(vote_crud.all(self.session))), 1)
+
+        response = self.client.post(self.url + '/vote', headers=headers, json={'vote': 0, 'video_id': 3})
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()['id'], 3)
+        self.assertEqual(response.json()['votes'], {'dislikes': 1, 'likes': 0})
+
+        self.assertEqual(len(async_loop(vote_crud.all(self.session))), 2)
+
+        # 2 user
+        self.client.post(API_V1_URL + '/auth/register', json={**self.user_data, 'username': 'test2', 'email': 'test@exapmple.com'})
+        verification = async_loop(verification_crud.get(self.session, user_id=2)).__dict__
+        self.client.post(API_V1_URL + '/auth/activate', json={'uuid': verification['uuid']})
+        tokens = self.client.post(API_V1_URL + '/auth/login', data={'username': 'test2', 'password': 'test1234'})
+
+        headers = {'Authorization': f'Bearer {tokens.json()["access_token"]}'}
+
+        response = self.client.post(self.url + '/vote', headers=headers, json={'vote': 1, 'video_id': 2})
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()['votes'], {'dislikes': 0, 'likes': 2})
+
+        self.assertEqual(len(async_loop(vote_crud.all(self.session))), 3)
+
+        response = self.client.post(self.url + '/vote', headers=headers, json={'vote': 1, 'video_id': 3})
+        self.assertEqual(response.status_code, 201)
+
+        self.assertEqual(response.json()['votes'], {'dislikes': 1, 'likes': 1})
+
+        self.assertEqual(len(async_loop(vote_crud.all(self.session))), 4)

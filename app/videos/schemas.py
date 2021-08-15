@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 
 from app.auth.schemas import UserPublic
 from app.categories.schemas import GetCategory
@@ -54,3 +54,16 @@ class VideoPaginate(Paginate):
     """ Video paginate """
 
     results: List[GetVideo]
+
+
+class CreateVote(BaseModel):
+    """ Create votes """
+
+    vote: int
+    video_id: int
+
+    @validator('vote')
+    def validate_vote(cls, vote):
+        if vote < 0 or vote > 1:
+            raise ValueError('Vote is 0 (dislike) or 1 (like)')
+        return vote

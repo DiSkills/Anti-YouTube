@@ -5,8 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.CRUD import CRUD, ModelType
-from app.videos.models import Video
-from app.videos.schemas import CreateVideo, VideoUpdate
+from app.videos.models import Video, Votes
+from app.videos.schemas import CreateVideo, VideoUpdate, CreateVote
 
 
 class VideoCRUD(CRUD[Video, CreateVideo, VideoUpdate]):
@@ -75,4 +75,10 @@ class VideoCRUD(CRUD[Video, CreateVideo, VideoUpdate]):
         }
 
 
+class VoteCRUD(CRUD[Votes, CreateVote, CreateVote]):
+    """ Vote CRUD """
+    pass
+
+
 video_crud = VideoCRUD(Video)
+vote_crud = VoteCRUD(Votes)

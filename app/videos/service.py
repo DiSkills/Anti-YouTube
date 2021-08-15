@@ -10,9 +10,9 @@ from app.categories.crud import category_crud
 from app.config import MEDIA_ROOT, SERVER_HOST, API_V1_URL
 from app.files import write_file, remove_file
 from app.service import paginate
-from app.videos.crud import video_crud
+from app.videos.crud import video_crud, vote_crud
 from app.videos.models import Video
-from app.videos.schemas import CreateVideo
+from app.videos.schemas import CreateVideo, CreateVote
 
 
 async def validation(db: AsyncSession, video_file: UploadFile, preview_file: UploadFile, category_id: int) -> None:
@@ -77,7 +77,7 @@ async def create_video(
 
 
 @paginate(crud=video_crud, url=f'{SERVER_HOST}{API_V1_URL}/videos/?page=')
-async def get_all_videos(*, db: AsyncSession, queryset: List[Video], page: int):
+async def get_all_videos(*, db: AsyncSession, queryset: List[Video], page: int) -> List[Dict[str, Any]]:
     """
         Get all videos
         :param db: DB
@@ -99,7 +99,7 @@ async def get_all_videos(*, db: AsyncSession, queryset: List[Video], page: int):
     ]
 
 
-async def get_video(db: AsyncSession, pk: int):
+async def get_video(db: AsyncSession, pk: int) -> Dict[str, Any]:
     """
         Get video
         :param db: DB
@@ -223,3 +223,27 @@ async def open_file(db: AsyncSession, request: Request, pk: int) -> tuple:
         headers['Content-Range'] = f'bytes {range_start}-{range_end}/{file_size}'
 
     return file, status_code, content_length, headers
+
+
+async def create_vote(db: AsyncSession, schema: CreateVote, user: User) -> Dict[str, Any]:
+    """
+        Create vote
+        :param db: DB
+        :type db: AsyncSession
+        :param schema: Vote data
+        :type schema: CreateVote
+        :param user: User
+        :type user: User
+        :return: Video
+        :rtype: dict
+        :raise HTTPException 400: Vote exist
+    """
+
+    if await vote_crud.exists(db, video_id=schema.video_id, user_id=user.id):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Vote exist')
+
+    if not await video_crud.exists(db, id=schema.video_id):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Video not found')
+
+    await vote_crud.create(db, schema, user_id=user.id)
+    return await get_video(db, schema.video_id)

@@ -6,7 +6,7 @@ from app.auth.permission import is_active, is_superuser
 from app.db import async_session
 from app.schemas import Message
 from app.videos import service
-from app.videos.schemas import GetVideo, CreateVideo, VideoPaginate
+from app.videos.schemas import GetVideo, CreateVideo, VideoPaginate, CreateVote
 
 videos_router = APIRouter()
 
@@ -25,7 +25,7 @@ async def create_video(
         category_id: int = Form(...),
         video_file: UploadFile = File(...),
         preview_file: UploadFile = File(...),
-        user: User = Depends(is_active)
+        user: User = Depends(is_active),
 ):
     async with async_session() as session:
         async with session.begin():
@@ -100,3 +100,17 @@ async def get_streaming_video(request: Request, pk: int) -> StreamingResponse:
                 **headers,
             })
             return response
+
+
+@videos_router.post(
+    '/vote',
+    response_model=GetVideo,
+    status_code=status.HTTP_201_CREATED,
+    description='Create vote 0 - dislike; 1 - like',
+    response_description='Create vote',
+    name='Create vote',
+)
+async def create_vote(schema: CreateVote, user: User = Depends(is_active)):
+    async with async_session() as session:
+        async with session.begin():
+            return await service.create_vote(session, schema, user)
