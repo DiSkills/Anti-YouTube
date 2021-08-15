@@ -28,11 +28,11 @@ async def startup():
         if not TESTS:
             await conn.run_sync(Base.metadata.create_all)
 
-            if int(DOCKER):
-                await createsuperuser_docker()
+    if int(DOCKER):
+        await createsuperuser_docker()
 
-            if not os.path.exists(MEDIA_ROOT):
-                os.mkdir(MEDIA_ROOT)
+    if not os.path.exists(MEDIA_ROOT):
+        os.mkdir(MEDIA_ROOT)
 
 
 from app.routers import routers
