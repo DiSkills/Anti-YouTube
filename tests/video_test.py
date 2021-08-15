@@ -11,7 +11,7 @@ from app.app import app
 from app.auth.crud import verification_crud, user_crud
 from app.config import MEDIA_ROOT, API_V1_URL
 from app.db import engine
-from app.videos.api import create_video, get_video, get_all_videos
+from app.videos.api import create_video, get_video, get_all_videos, delete_video
 from app.videos.crud import video_crud
 from tests import create_all, drop_all, async_loop
 
@@ -154,6 +154,23 @@ class VideosTestCase(TestCase):
         with self.assertRaises(HTTPException) as error:
             async_loop(get_video(143))
 
+        # Delete
+        video_1 = async_loop(video_crud.get(self.session, id=1))
+        self.assertEqual(os.path.exists(video_1.preview_file), True)
+        self.assertEqual(os.path.exists(video_1.video_file), True)
+        self.assertEqual(len(async_loop(video_crud.all(self.session))), 3)
+
+        response = async_loop(delete_video(1))
+        self.assertEqual(response, {'msg': 'Video has been deleted'})
+
+        self.assertEqual(os.path.exists(video_1.preview_file), False)
+        self.assertEqual(os.path.exists(video_1.video_file), False)
+
+        self.assertEqual(len(async_loop(video_crud.all(self.session))), 2)
+
+        with self.assertRaises(HTTPException) as error:
+            async_loop(delete_video(1))
+
     def test_videos_request(self):
         self.client.post(API_V1_URL + '/auth/register', json=self.user_data)
         verification = async_loop(verification_crud.get(self.session, user_id=1)).__dict__
@@ -268,5 +285,27 @@ class VideosTestCase(TestCase):
         self.assertEqual(response.json()['id'], 1)
 
         response = self.client.get(self.url + '/143')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'detail': 'Video not found'})
+
+        # Delete
+        video_1 = async_loop(video_crud.get(self.session, id=1))
+        self.assertEqual(os.path.exists(video_1.preview_file), True)
+        self.assertEqual(os.path.exists(video_1.video_file), True)
+
+        async_loop(self.session.execute(update(user_crud.model).filter_by(id=1).values(is_superuser=True)))
+        async_loop(self.session.commit())
+        self.assertEqual(len(async_loop(video_crud.all(self.session))), 3)
+
+        response = self.client.delete(self.url + '/1', headers=headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'msg': 'Video has been deleted'})
+
+        self.assertEqual(os.path.exists(video_1.preview_file), False)
+        self.assertEqual(os.path.exists(video_1.video_file), False)
+
+        self.assertEqual(len(async_loop(video_crud.all(self.session))), 2)
+
+        response = self.client.delete(self.url + '/1', headers=headers)
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json(), {'detail': 'Video not found'})

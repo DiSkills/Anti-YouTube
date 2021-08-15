@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.models import User
 from app.categories.crud import category_crud
 from app.config import MEDIA_ROOT, SERVER_HOST, API_V1_URL
-from app.files import write_file
+from app.files import write_file, remove_file
 from app.service import paginate
 from app.videos.crud import video_crud
 from app.videos.models import Video
@@ -109,3 +109,27 @@ async def get_video(db: AsyncSession, pk: int):
 
     video = await video_crud.get(db, id=pk)
     return {**video.__dict__, 'category': video.category.__dict__, 'user': video.user.__dict__}
+
+
+async def delete_video(db: AsyncSession, pk: int) -> Dict[str, str]:
+    """
+        Delete video
+        :param db: DB
+        :type db: AsyncSession
+        :param pk: ID
+        :type pk: int
+        :return: Message
+        :rtype: dict
+        :raise HTTPException 400: video not found
+    """
+
+    if not await video_crud.exists(db, id=pk):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Video not found')
+
+    video = await video_crud.get(db, id=pk)
+
+    remove_file(video.video_file)
+    remove_file(video.preview_file)
+
+    await video_crud.remove(db, id=pk)
+    return {'msg': 'Video has been deleted'}

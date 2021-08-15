@@ -1,8 +1,9 @@
 from fastapi import APIRouter, status, Form, UploadFile, File, Depends, Query
 
 from app.auth.models import User
-from app.auth.permission import is_active
+from app.auth.permission import is_active, is_superuser
 from app.db import async_session
+from app.schemas import Message
 from app.videos import service
 from app.videos.schemas import GetVideo, CreateVideo, VideoPaginate
 
@@ -57,3 +58,18 @@ async def get_video(pk: int):
     async with async_session() as session:
         async with session.begin():
             return await service.get_video(session, pk)
+
+
+@videos_router.delete(
+    '/{pk}',
+    status_code=status.HTTP_200_OK,
+    response_model=Message,
+    description='Delete video',
+    response_description='Delete video',
+    name='Delete video',
+    dependencies=[Depends(is_superuser)],
+)
+async def delete_video(pk: int):
+    async with async_session() as session:
+        async with session.begin():
+            return await service.delete_video(session, pk)
