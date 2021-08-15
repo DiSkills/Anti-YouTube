@@ -1,7 +1,8 @@
 from datetime import datetime
-from typing import List, Dict, Any
+from pathlib import Path
+from typing import List, Dict, Any, Generator, IO
 
-from fastapi import UploadFile, HTTPException, status
+from fastapi import UploadFile, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import User
@@ -133,3 +134,81 @@ async def delete_video(db: AsyncSession, pk: int) -> Dict[str, str]:
 
     await video_crud.remove(db, id=pk)
     return {'msg': 'Video has been deleted'}
+
+
+def ranged(
+        file: IO[bytes],
+        start: int = 0,
+        end: int = None,
+        block_size: int = 8192,
+) -> Generator[bytes, None, None]:
+    """
+        Ranged video
+        :param file: video
+        :type file: IO
+        :param start: start
+        :type start: int
+        :param end: end
+        :type end: int
+        :param block_size: Block size
+        :type block_size: int
+        :return: Generator
+        :rtype: Generator
+    """
+
+    consumed = 0
+
+    file.seek(start)
+    while True:
+        data_length = min(block_size, end - start - consumed) if end else block_size
+        if data_length <= 0:
+            break
+        data = file.read(data_length)
+        if not data:
+            break
+        consumed += data_length
+        yield data
+
+    if hasattr(file, 'close'):
+        file.close()
+
+
+async def open_file(db: AsyncSession, request: Request, pk: int) -> tuple:
+    """
+        Open file
+        :param db: DB
+        :type db: AsyncSession
+        :param request: Request
+        :type request: Request
+        :param pk: ID
+        :type pk: int
+        :return: Tuple
+        :rtype: tuple
+        :raise HTTPException 400: Video not found
+    """
+
+    if not await video_crud.exists(db, id=pk):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Video not found')
+
+    video_file = await video_crud.get(db, id=pk)
+    path = Path(video_file.video_file)
+    file = path.open('rb')
+    file_size = path.stat().st_size
+
+    content_length = file_size
+    status_code = status.HTTP_200_OK
+    headers = {}
+    content_range = request.headers.get('range')
+
+    if content_range is not None:
+        content_range = content_range.strip().lower()
+        content_ranges = content_range.split('=')[-1]
+        range_start, range_end, *_ = map(str.strip, (content_ranges + '-').split('-'))
+        range_start = max(0, int(range_start)) if range_start else 0
+        range_end = min(file_size - 1, int(range_end)) if range_end else file_size - 1
+        content_length = (range_end - range_start) + 1
+        file = ranged(file, start=range_start, end=range_end + 1)
+        status_code = status.HTTP_206_PARTIAL_CONTENT
+        headers['Content-Range'] = f'bytes {range_start}-{range_end}/{file_size}'
+
+    return file, status_code, content_length, headers

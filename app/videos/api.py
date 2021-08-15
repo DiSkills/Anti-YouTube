@@ -1,4 +1,5 @@
-from fastapi import APIRouter, status, Form, UploadFile, File, Depends, Query
+from fastapi import APIRouter, status, Form, UploadFile, File, Depends, Query, Request
+from fastapi.responses import StreamingResponse
 
 from app.auth.models import User
 from app.auth.permission import is_active, is_superuser
@@ -73,3 +74,29 @@ async def delete_video(pk: int):
     async with async_session() as session:
         async with session.begin():
             return await service.delete_video(session, pk)
+
+
+@videos_router.get(
+    '/video/{pk}',
+    response_class=StreamingResponse,
+    status_code=status.HTTP_206_PARTIAL_CONTENT,
+    description='Streaming response video',
+    response_description='Streaming response video',
+    name='Video streaming',
+)
+async def get_streaming_video(request: Request, pk: int) -> StreamingResponse:
+    async with async_session() as session:
+        async with session.begin():
+            file, status_code, content_length, headers = await service.open_file(session, request, pk)
+            response = StreamingResponse(
+                file,
+                media_type='video/mp4',
+                status_code=status_code,
+            )
+
+            response.headers.update({
+                'Accept-Ranges': 'bytes',
+                'Content-Length': str(content_length),
+                **headers,
+            })
+            return response
