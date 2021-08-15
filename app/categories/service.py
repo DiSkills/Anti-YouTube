@@ -108,5 +108,6 @@ async def get_videos_for_category(db: AsyncSession, category_pk: int):
             **video.__dict__,
             'category': video.category.__dict__,
             'user': video.user.__dict__,
+            'votes': video_crud.get_votes(video),
         } for video in await video_crud.filter(db, category_id=category_pk)
     ]
