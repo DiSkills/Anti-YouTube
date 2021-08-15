@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, List
 from uuid import uuid4
 
 from fastapi import status, HTTPException, UploadFile
@@ -22,6 +22,7 @@ from app.auth.send_emails import send_new_account_email, send_reset_password_ema
 from app.auth.tokens import create_token, verify_refresh_token, create_password_reset_token, verify_password_reset_token
 from app.config import MEDIA_ROOT
 from app.files import remove_file, write_file
+from app.videos.crud import history_crud, video_crud
 
 
 async def refresh(db: AsyncSession, schema: RefreshToken):
@@ -302,3 +303,27 @@ async def upload_avatar(db: AsyncSession, avatar: UploadFile, user: User) -> Dic
 
     user = await user_crud.update(db, user.id, UploadAvatar(avatar=avatar_name))
     return user.__dict__
+
+
+async def get_history(db: AsyncSession, user: User) -> List[Dict[str, Any]]:
+    """
+        Get history
+        :param db: DB
+        :type db: AsyncSession
+        :param user: User
+        :type user: User
+        :return: History
+        :rtype: list
+    """
+    history = []
+    for history_video in await history_crud.filter(db, user_id=user.id):
+        video = await video_crud.get(db, id=history_video.video.id)
+        to_history = {
+            **history_video.video.__dict__,
+            'category': video.category.__dict__,
+            'votes': video_crud.get_votes(history_video.video),
+            'user': video.user.__dict__
+        }
+        history.append(to_history)
+
+    return history

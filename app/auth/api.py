@@ -1,3 +1,5 @@
+from typing import List
+
 from fastapi import APIRouter, status, Depends, Form, UploadFile, File
 
 from app.auth import service
@@ -15,6 +17,7 @@ from app.auth.schemas import (
 )
 from app.db import async_session
 from app.schemas import Message
+from app.videos.schemas import GetVideo
 
 auth_router = APIRouter()
 
@@ -183,3 +186,17 @@ async def upload_avatar(avatar: UploadFile = File(...), user: User = Depends(is_
     async with async_session() as session:
         async with session.begin():
             return await service.upload_avatar(session, avatar, user)
+
+
+@auth_router.get(
+    '/history',
+    response_model=List[GetVideo],
+    status_code=status.HTTP_200_OK,
+    description='Get history',
+    response_description='Get history',
+    name='History',
+)
+async def get_history(user: User = Depends(is_active)):
+    async with async_session() as session:
+        async with session.begin():
+            return await service.get_history(session, user)

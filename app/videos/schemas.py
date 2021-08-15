@@ -67,3 +67,10 @@ class CreateVote(BaseModel):
         if vote < 0 or vote > 1:
             raise ValueError('Vote is 0 (dislike) or 1 (like)')
         return vote
+
+
+class CreateHistory(BaseModel):
+    """ Create history """
+
+    user_id: int
+    video_id: int

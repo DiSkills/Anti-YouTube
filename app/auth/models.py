@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import relationship, backref
 
 from app.db import ModelMixin, Base
-from app.videos.models import Video, Votes
+from app.videos.models import Video, Votes, History
 
 UserRef = ForwardRef('User')
 
@@ -55,6 +55,7 @@ class User(Base, ModelMixin):
     )
     videos: List[Video] = relationship(Video, backref='related_user', lazy='dynamic')
     votes: List[Votes] = relationship(Votes, backref='related_user', lazy='dynamic')
+    history: List[History] = relationship(History, backref='related_user')
 
     def __str__(self):
         return f'{self.username}'

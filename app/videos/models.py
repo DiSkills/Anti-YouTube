@@ -9,6 +9,7 @@ from app.db import Base, ModelMixin
 Category = ForwardRef('Category')
 User = ForwardRef('User')
 VotesRef = ForwardRef('Votes')
+HistoryRef = ForwardRef('History')
 
 
 class Video(Base, ModelMixin):
@@ -27,6 +28,7 @@ class Video(Base, ModelMixin):
     category: Category = relationship('Category', backref='related_videos')
     user: User = relationship('User', backref='related_videos')
     votes: List[VotesRef] = relationship('Votes', backref='related_videos')
+    histories: List[HistoryRef] = relationship('History', backref='related_videos')
 
     def __str__(self):
         return f'{self.title}'
@@ -50,3 +52,19 @@ class Votes(Base, ModelMixin):
 
     def __repr__(self):
         return f'Votes {self.id}'
+
+
+class History(Base, ModelMixin):
+    """ History """
+
+    user_id: int = Column(Integer, ForeignKey('user.id', ondelete='CASCADE'))
+    video_id: int = Column(Integer, ForeignKey('video.id', ondelete='CASCADE'))
+
+    video: Video = relationship(Video, backref='related_history')
+    user: User = relationship('User', backref='related_history')
+
+    def __str__(self):
+        return f'{self.id}'
+
+    def __repr__(self):
+        return f'History {self.id}'
