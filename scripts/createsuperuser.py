@@ -1,4 +1,5 @@
 import asyncio
+import os
 
 from pydantic import EmailStr, EmailError
 
@@ -6,6 +7,31 @@ from app.auth.crud import user_crud
 from app.auth.schemas import RegisterAdmin
 from app.auth.security import get_password_hash
 from app.db import async_session, engine, Base
+
+
+async def createsuperuser_docker():
+    """ Create superuser (docker) """
+
+    async with async_session() as session:
+        async with session.begin():
+            if len(await user_crud.all(session)):
+                return
+
+            username = os.environ.get('USERNAME_ADMIN')
+            email = os.environ.get('EMAIL_ADMIN')
+            password = os.environ.get('PASSWORD_ADMIN')
+
+            schema = RegisterAdmin(
+                password=password,
+                confirm_password=password,
+                username=username,
+                email=email,
+                about='',
+                send_message=False,
+            )
+            del schema.confirm_password
+
+            await user_crud.create(session, schema, password=get_password_hash(schema.password))
 
 
 async def createsuperuser():

@@ -16,6 +16,8 @@ services:
     build:
       context: ./
       dockerfile: Dockerfile
+    environment:
+      - DOCKER=1
     depends_on:
       - postgres
     ports:

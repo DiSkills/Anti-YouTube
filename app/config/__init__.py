@@ -4,7 +4,12 @@ import os
 
 BASE_DIR = os.path.abspath(os.path.dirname(os.path.abspath(__file__)))
 
-load_dotenv(os.path.join(BASE_DIR, 'config.env'))
+DOCKER = os.environ.get('DOCKER') or 0
+
+if not int(DOCKER):
+    load_dotenv(os.path.join(BASE_DIR, 'config.env'))
+else:
+    load_dotenv(os.path.join(BASE_DIR, 'config.docker.env'))
 
 API_V1_URL = r'/api/v1'
 

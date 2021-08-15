@@ -3,8 +3,9 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.config import TESTS, API_V1_URL, MEDIA_ROOT
+from app.config import TESTS, API_V1_URL, MEDIA_ROOT, DOCKER
 from app.db import engine, Base
+from scripts.createsuperuser import createsuperuser_docker
 
 app = FastAPI(
     title='FastAPI Anti-YouTube',
@@ -26,6 +27,10 @@ async def startup():
     async with engine.begin() as conn:
         if not TESTS:
             await conn.run_sync(Base.metadata.create_all)
+
+            if DOCKER:
+                await createsuperuser_docker()
+
             if not os.path.exists(MEDIA_ROOT):
                 os.mkdir(MEDIA_ROOT)
 

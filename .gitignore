@@ -2,3 +2,4 @@
 /app/config/config.env
 /tasks.txt
 /media/
+/app/config/config.docker.env
