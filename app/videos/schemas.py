@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from app.auth.schemas import UserPublic
 from app.categories.schemas import GetCategory
-from app.schemas import Paginate
+from app.schemas import Paginate, Votes
 
 
 class VideoBase(BaseModel):
@@ -41,6 +41,7 @@ class GetVideoNotUser(GetVideoBase):
     """ Get video """
 
     category: GetCategory
+    votes: Votes
 
 
 class GetVideo(GetVideoNotUser):

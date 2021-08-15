@@ -68,7 +68,12 @@ async def create_video(
     await write_file(preview_name, preview_file)
     video = await video_crud.create(db, schema, video_file=video_name, preview_file=preview_name, user_id=user.id)
     video = await video_crud.get(db, id=video.id)
-    return {**video.__dict__, 'category': video.category.__dict__, 'user': video.user.__dict__}
+    return {
+        **video.__dict__,
+        'category': video.category.__dict__,
+        'user': video.user.__dict__,
+        'votes': video_crud.get_votes(video),
+    }
 
 
 @paginate(crud=video_crud, url=f'{SERVER_HOST}{API_V1_URL}/videos/?page=')
@@ -89,6 +94,7 @@ async def get_all_videos(*, db: AsyncSession, queryset: List[Video], page: int):
             **video.__dict__,
             'user': video.user.__dict__,
             'category': video.category.__dict__,
+            'votes': video_crud.get_votes(video),
         } for video in queryset
     ]
 
@@ -109,7 +115,12 @@ async def get_video(db: AsyncSession, pk: int):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Video not found')
 
     video = await video_crud.get(db, id=pk)
-    return {**video.__dict__, 'category': video.category.__dict__, 'user': video.user.__dict__}
+    return {
+        **video.__dict__,
+        'category': video.category.__dict__,
+        'user': video.user.__dict__,
+        'votes': video_crud.get_votes(video),
+    }
 
 
 async def delete_video(db: AsyncSession, pk: int) -> Dict[str, str]:

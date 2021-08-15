@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,7 +22,7 @@ class VideoCRUD(CRUD[Video, CreateVideo, VideoUpdate]):
             :rtype: list
         """
         query = await db.execute(select(self.model).options(
-            selectinload(self.model.category), selectinload(self.model.user)
+            selectinload(self.model.category), selectinload(self.model.user), selectinload(self.model.votes),
         ).order_by(self.model.id.desc()).filter_by(**kwargs))
         return query.scalars()
 
@@ -37,7 +37,7 @@ class VideoCRUD(CRUD[Video, CreateVideo, VideoUpdate]):
         """
         query = await db.execute(
             select(self.model).options(
-                selectinload(self.model.category), selectinload(self.model.user)
+                selectinload(self.model.category), selectinload(self.model.user), selectinload(self.model.votes),
             ).filter_by(**kwargs)
         )
         return query.scalars().first()
@@ -56,10 +56,23 @@ class VideoCRUD(CRUD[Video, CreateVideo, VideoUpdate]):
         """
         query = await db.execute(
             select(self.model).options(
-                selectinload(self.model.category), selectinload(self.model.user)
+                selectinload(self.model.category), selectinload(self.model.user), selectinload(self.model.votes),
             ).order_by(self.model.id.desc()).offset(skip).limit(limit)
         )
         return query.scalars().all()
+
+    def get_votes(self, video: Video) -> Dict[str, int]:
+        """
+            Get votes
+            :param video: Video
+            :type video: Video
+            :return: Votes
+            :rtype: dict
+        """
+        return {
+            'likes': len(list(filter(lambda vote: (vote.vote == 1), video.votes))),
+            'dislikes': len(list(filter(lambda vote: (vote.vote == 0), video.votes))),
+        }
 
 
 video_crud = VideoCRUD(Video)
