@@ -35,6 +35,7 @@ from app.auth.schemas import (
 from app.auth.tokens import ALGORITHM, create_password_reset_token
 from app.config import API_V1_URL, SECRET_KEY, MEDIA_ROOT
 from app.db import engine, AsyncSession
+from app.videos.crud import video_crud
 from tests import create_all, drop_all, async_loop
 
 
@@ -51,9 +52,108 @@ class AuthTestCase(TestCase):
             'about': 'string',
             'send_message': True
         }
+        self.video_data = {
+            'title': 'Anti-YouTube',
+            'description': 'Hello world!',
+            'category_id': 1,
+        }
         self.url = API_V1_URL + '/auth'
         async_loop(create_all())
         os.mkdir(MEDIA_ROOT)
+
+    def test_channel(self):
+        self.client.post(self.url + '/register', json=self.data)
+        verification = async_loop(verification_crud.get(self.session, user_id=1)).__dict__
+        self.client.post(self.url + '/activate', json={'uuid': verification['uuid']})
+        tokens = self.client.post(self.url + '/login', data={'username': 'test', 'password': 'test1234'})
+
+        async_loop(self.session.execute(update(user_crud.model).filter_by(id=1).values(is_superuser=True)))
+        async_loop(self.session.commit())
+
+        headers = {'Authorization': f'Bearer {tokens.json()["access_token"]}'}
+        self.client.post(API_V1_URL + '/categories/', json={'name': 'FastAPI'}, headers=headers)
+
+        self.client.post(self.url + '/register', json={**self.data, 'username': 'test2', 'email': 'test2@example.com'})
+        verification = async_loop(verification_crud.get(self.session, user_id=2)).__dict__
+        self.client.post(self.url + '/activate', json={'uuid': verification['uuid']})
+        tokens = self.client.post(self.url + '/login', data={'username': 'test2', 'password': 'test1234'})
+        headers = {'Authorization': f'Bearer {tokens.json()["access_token"]}'}
+
+        response = self.client.get(self.url + '/channel?pk=2')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['id'], 2)
+        self.assertEqual(response.json()['count_videos'], 0)
+        self.assertEqual(response.json()['views'], 0)
+
+        with open('tests/image.png', 'rb') as preview:
+            with open('tests/test.mp4', 'rb') as video:
+                self.client.post(
+                    API_V1_URL + '/videos/',
+                    headers=headers,
+                    data=self.video_data,
+                    files={
+                        'preview_file': ('image.png', preview, 'image/png'),
+                        'video_file': ('test.mp4', video, 'video/mp4'),
+                    }
+                )
+        response = self.client.get(self.url + '/channel?pk=2')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['id'], 2)
+        self.assertEqual(response.json()['count_videos'], 1)
+        self.assertEqual(response.json()['views'], 0)
+        self.assertEqual(response.json()['is_following'], None)
+
+        self.client.post(API_V1_URL + '/videos/add-to-history?pk=1', headers=headers)
+        response = self.client.get(self.url + '/channel?pk=2')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['id'], 2)
+        self.assertEqual(response.json()['count_videos'], 1)
+        self.assertEqual(response.json()['views'], 1)
+        self.assertEqual(response.json()['is_following'], None)
+
+        with open('tests/image.png', 'rb') as preview:
+            with open('tests/test.mp4', 'rb') as video:
+                self.client.post(
+                    API_V1_URL + '/videos/',
+                    headers=headers,
+                    data=self.video_data,
+                    files={
+                        'preview_file': ('image.png', preview, 'image/png'),
+                        'video_file': ('test.mp4', video, 'video/mp4'),
+                    }
+                )
+        response = self.client.get(self.url + '/channel?pk=2')
+        self.assertEqual(response.json()['count_videos'], 2)
+
+        # Self
+        response = self.client.get(self.url + '/channel?pk=2', headers=headers)
+        self.assertEqual(response.json()['is_following'], 3)
+
+        # Unfollow
+        tokens = self.client.post(self.url + '/login', data={'username': 'test', 'password': 'test1234'})
+        headers = {'Authorization': f'Bearer {tokens.json()["access_token"]}'}
+        response = self.client.get(self.url + '/channel?pk=2', headers=headers)
+        self.assertEqual(response.json()['is_following'], 0)
+
+        # Follow
+        self.client.post(self.url + '/follow?to_id=2', headers=headers)
+        response = self.client.get(self.url + '/channel?pk=2', headers=headers)
+        self.assertEqual(response.json()['is_following'], 1)
+
+        self.client.post(API_V1_URL + '/videos/add-to-history?pk=1', headers=headers)
+        self.client.post(API_V1_URL + '/videos/add-to-history?pk=1', headers=headers)
+        response = self.client.get(self.url + '/channel?pk=2')
+        self.assertEqual(response.json()['views'], 3)
+
+        response = self.client.get(self.url + '/channel?pk=143')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'detail': 'User not found'})
+
+        self.client.post(self.url + '/register', json={**self.data, 'username': 'test3', 'email': 'test3@example.com'})
+        response = self.client.get(self.url + '/channel?pk=3')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['views'], 0)
+        self.assertEqual(response.json()['count_videos'], 0)
 
     def tearDown(self) -> None:
         async_loop(self.session.close())

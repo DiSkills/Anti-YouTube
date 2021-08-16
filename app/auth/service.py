@@ -361,6 +361,6 @@ async def get_channel(db: AsyncSession, pk, request: Request) -> Dict[str, Any]:
         **channel.__dict__,
         'followers_count': await user_crud.count_followers(db, pk),
         'is_following': is_following,
-        'views': views,
+        'views': views or 0,
         'count_videos': count_videos,
     }
