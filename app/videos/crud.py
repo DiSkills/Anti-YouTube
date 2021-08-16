@@ -3,6 +3,7 @@ from typing import Optional, List, Dict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy.sql.functions import count, sum
 
 from app.CRUD import CRUD, ModelType
 from app.videos.models import Video, Votes, History
@@ -11,6 +12,10 @@ from app.videos.schemas import CreateVideo, VideoUpdate, CreateVote, CreateHisto
 
 class VideoCRUD(CRUD[Video, CreateVideo, VideoUpdate]):
     """ Video CRUD """
+
+    async def count_views_and_videos(self, db: AsyncSession, **kwargs):
+        query = await db.execute(select(sum(self.model.views), count(self.model.id)).filter_by(**kwargs))
+        return list(query)[0]
 
     async def filter(self, db: AsyncSession, **kwargs) -> List[ModelType]:
         """

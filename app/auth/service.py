@@ -2,11 +2,12 @@ from datetime import datetime
 from typing import Dict, Any, List
 from uuid import uuid4
 
-from fastapi import status, HTTPException, UploadFile
+from fastapi import status, HTTPException, UploadFile, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.crud import user_crud, verification_crud
 from app.auth.models import User
+from app.auth.permission import is_auth_or_anonymous
 from app.auth.schemas import (
     RegisterUser,
     VerificationUUID,
@@ -327,3 +328,39 @@ async def get_history(db: AsyncSession, user: User) -> List[Dict[str, Any]]:
         history.append(to_history)
 
     return history
+
+
+async def get_channel(db: AsyncSession, pk, request: Request) -> Dict[str, Any]:
+    """
+        Channel
+        :param db: DB
+        :type db: AsyncSession
+        :param pk: User ID
+        :type pk: int
+        :param request: Request
+        :type request: Request
+        :return: Channel
+        :rtype: dict
+    """
+
+    if not await user_crud.exists(db, id=pk):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='User not found')
+
+    is_following = None
+
+    user = await is_auth_or_anonymous(request)
+    channel = await user_crud.get(db, id=pk)
+    if user:
+        user = await user_crud.get(db, id=user.id)
+        if user.id != pk:
+            is_following = await user.is_following(db, channel)
+        else:
+            is_following = 3
+    views, count_videos = await video_crud.count_views_and_videos(db, user_id=pk)
+    return {
+        **channel.__dict__,
+        'followers_count': await user_crud.count_followers(db, pk),
+        'is_following': is_following,
+        'views': views,
+        'count_videos': count_videos,
+    }

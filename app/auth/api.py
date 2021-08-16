@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, status, Depends, Form, UploadFile, File
+from fastapi import APIRouter, status, Depends, Form, UploadFile, File, Request
 
 from app.auth import service
 from app.auth.models import User
@@ -13,7 +13,7 @@ from app.auth.schemas import (
     AccessToken,
     Password,
     ChangeUserDataResponse,
-    ChangeUserData,
+    ChangeUserData, Channel,
 )
 from app.db import async_session
 from app.schemas import Message
@@ -200,3 +200,17 @@ async def get_history(user: User = Depends(is_active)):
     async with async_session() as session:
         async with session.begin():
             return await service.get_history(session, user)
+
+
+@auth_router.get(
+    '/channel',
+    response_model=Channel,
+    status_code=status.HTTP_200_OK,
+    description='Get channel',
+    response_description='Get channel',
+    name='Get channel',
+)
+async def get_channel(pk: int, request: Request):
+    async with async_session() as session:
+        async with session.begin():
+            return await service.get_channel(session, pk, request)

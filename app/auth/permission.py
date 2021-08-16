@@ -1,3 +1,5 @@
+from typing import Optional
+
 import jwt
 from fastapi import Security, HTTPException, status, Depends, Request
 from fastapi.security import OAuth2PasswordBearer
@@ -73,7 +75,7 @@ async def is_superuser(user: User = Depends(is_active)) -> User:
     return user
 
 
-async def is_auth_or_anonymous(request: Request):
+async def is_auth_or_anonymous(request: Request) -> Optional[User]:
     """
         If user return user else None
         :param request: Request

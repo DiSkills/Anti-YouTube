@@ -106,11 +106,18 @@ class RegisterAdmin(RegisterUser):
 
 
 class UserPublic(BaseModel):
-    """
-        User public
-    """
+    """ User public """
 
     username: str
     avatar: Optional[str]
     about: str
     id: int
+
+
+class Channel(UserPublic):
+    """ Channel """
+
+    followers_count: int
+    count_videos: int
+    views: int
+    is_following: Optional[int]
