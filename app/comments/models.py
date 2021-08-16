@@ -39,3 +39,9 @@ class Comment(Base, ModelMixin):
         backref=backref('parent', lazy='dynamic'),
         lazy='dynamic'
     )
+
+    def __str__(self):
+        return f'{self.id}'
+
+    def __repr__(self):
+        return f'Comment {self.id}'

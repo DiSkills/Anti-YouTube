@@ -1,10 +1,54 @@
+from typing import List
+
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.models import User
 from app.comments.crud import comment_crud
+from app.comments.models import Comment
 from app.comments.schemas import CreateComment
 from app.videos.crud import video_crud
+
+
+async def get_children(db: AsyncSession, comments: List[Comment]):
+    res = []
+    for comment in comments:
+        c = {
+            # 'parent': comment['parent'],
+            'id': comment.id,
+            'text': comment.text,
+            'created_at': comment.created_at,
+            'user': comment.user.__dict__,
+            'is_child': comment.is_child,
+        }
+
+        children = await comment_crud.get_children(db, comment)
+
+        if len(children):
+            c['children'] = await get_children(db, children)
+        res.append(c)
+    return res
+
+
+async def comment_tree(db: AsyncSession, comments: List[Comment]):
+    res = []
+    for comment in comments:
+        c = {
+            # 'parent': comment['parent'],
+            'id': comment.id,
+            'text': comment.text,
+            'created_at': comment.created_at,
+            'user': comment.user.__dict__,
+            'is_child': comment.is_child,
+        }
+
+        children = await comment_crud.get_children(db, comment)
+
+        if len(children):
+            c['children'] = await get_children(db, children)
+        if not comment.is_child:
+            res.append(c)
+    return res
 
 
 async def create_comment(db: AsyncSession, schema: CreateComment, user: User):
@@ -44,3 +88,8 @@ async def create_comment(db: AsyncSession, schema: CreateComment, user: User):
         'user': new_comment.user.__dict__,
         'parent': {**parent.__dict__, 'user': parent.user.__dict__} if parent else None,
     }
+
+
+async def get_comments(db: AsyncSession, pk: int):
+    comments = await comment_crud.filter(db, video_id=pk)
+    return await comment_tree(db, comments)

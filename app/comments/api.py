@@ -9,6 +9,20 @@ from app.db import async_session
 comments_router = APIRouter()
 
 
+@comments_router.get(
+    '/video/{pk}',
+    # response_model=List[GetAllComments],
+    status_code=status.HTTP_200_OK,
+    description='Get comments for video',
+    response_description='Get comments for video',
+    name='Comments',
+)
+async def get_comments(pk: int):
+    async with async_session() as session:
+        async with session.begin():
+            return await service.get_comments(session, pk)
+
+
 @comments_router.post(
     '/',
     status_code=status.HTTP_201_CREATED,
