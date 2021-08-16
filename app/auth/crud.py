@@ -29,6 +29,15 @@ class UserCRUD(CRUD[User, RegisterUser, UserUpdate]):
         return list(query)[0][0]
 
     async def get_subscriptions(self, db: AsyncSession, user: User) -> List[ModelType]:
+        """
+            Get subscriptions
+            :param db: DB
+            :type db: AsyncSession
+            :param user: User
+            :type user: User
+            :return: Subscriptions
+            :rtype: list
+        """
         query = await db.execute(user.subscriptions.filter(Subscriptions.c.subscriber_id == user.id).options(
             selectinload(self.model.videos),
         ))
