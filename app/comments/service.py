@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict, Any
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,7 +10,7 @@ from app.comments.schemas import CreateComment
 from app.videos.crud import video_crud
 
 
-async def get_children(db: AsyncSession, comments: List[Comment]):
+async def get_children(db: AsyncSession, comments: List[Comment]) -> List[Dict[str, Any]]:
     res = []
     for comment in comments:
         c = {
@@ -30,7 +30,7 @@ async def get_children(db: AsyncSession, comments: List[Comment]):
     return res
 
 
-async def comment_tree(db: AsyncSession, comments: List[Comment]):
+async def comment_tree(db: AsyncSession, comments: List[Comment]) -> List[Dict[str, Any]]:
     res = []
     for comment in comments:
         c = {
@@ -51,7 +51,7 @@ async def comment_tree(db: AsyncSession, comments: List[Comment]):
     return res
 
 
-async def create_comment(db: AsyncSession, schema: CreateComment, user: User):
+async def create_comment(db: AsyncSession, schema: CreateComment, user: User) -> Dict[str, Any]:
     """
         Create comment
         :param db: DB
@@ -62,6 +62,7 @@ async def create_comment(db: AsyncSession, schema: CreateComment, user: User):
         :type user: User
         :return: Comment
         :rtype: dict
+        :raise HTTPException 400: Video not found or Parent not found
     """
 
     if not await video_crud.exists(db, id=schema.video_id):
@@ -91,6 +92,20 @@ async def create_comment(db: AsyncSession, schema: CreateComment, user: User):
     }
 
 
-async def get_comments(db: AsyncSession, pk: int):
+async def get_comments(db: AsyncSession, pk: int) -> List[Dict[str, Any]]:
+    """
+        Get comments for video
+        :param db: DB
+        :type db: AsyncSession
+        :param pk: Video ID
+        :type pk: int
+        :return: Comment tree
+        :rtype: list
+        :raise HTTPException 400: Video not found
+    """
+
+    if not await video_crud.exists(db, id=pk):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Video not found')
+
     comments = await comment_crud.filter(db, video_id=pk)
     return await comment_tree(db, comments)
