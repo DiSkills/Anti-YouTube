@@ -61,7 +61,13 @@ class AuthTestCase(TestCase):
         async_loop(create_all())
         os.mkdir(MEDIA_ROOT)
 
+    def tearDown(self) -> None:
+        async_loop(self.session.close())
+        async_loop(drop_all())
+        shutil.rmtree(MEDIA_ROOT)
+
     def test_channel(self):
+        # Get channel
         self.client.post(self.url + '/register', json=self.data)
         verification = async_loop(verification_crud.get(self.session, user_id=1)).__dict__
         self.client.post(self.url + '/activate', json={'uuid': verification['uuid']})
@@ -155,10 +161,21 @@ class AuthTestCase(TestCase):
         self.assertEqual(response.json()['views'], 0)
         self.assertEqual(response.json()['count_videos'], 0)
 
-    def tearDown(self) -> None:
-        async_loop(self.session.close())
-        async_loop(drop_all())
-        shutil.rmtree(MEDIA_ROOT)
+        # Get videos
+        response = self.client.get(self.url + '/channel/videos/3')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), [])
+
+        response = self.client.get(self.url + '/channel/videos/2')
+        self.assertEqual(response.json()[0]['id'], 2)
+        self.assertEqual(response.json()[1]['id'], 1)
+        self.assertEqual(len(response.json()), 2)
+        self.assertEqual(response.json()[0]['user']['username'], 'test2')
+        self.assertEqual(response.json()[1]['user']['username'], 'test2')
+
+        response = self.client.get(self.url + '/channel/videos/143')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'detail': 'User not found'})
 
     def test_upload_avatar_requests(self):
         self.client.post(self.url + '/register', json=self.data)

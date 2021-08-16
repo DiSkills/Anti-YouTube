@@ -63,6 +63,7 @@ async def update_category(db: AsyncSession, pk: int, schema: UpdateCategory) -> 
         :type schema: UpdateCategory
         :return: Updated category
         :rtype: dict
+        :raise HTTPException 400: Category not found
     """
 
     if not await category_crud.exists(db, id=pk):
@@ -81,6 +82,7 @@ async def delete_category(db: AsyncSession, pk) -> Dict[str, str]:
         :type pk: int
         :return: Message
         :rtype: dict
+        :raise HTTPException 400: Category not found
     """
 
     if not await category_crud.exists(db, id=pk):
@@ -98,6 +100,7 @@ async def get_videos_for_category(db: AsyncSession, category_pk: int):
         :type category_pk: int
         :return: Videos
         :rtype: list
+        :raise HTTPException 400: Category not found
     """
 
     if not await category_crud.exists(db, id=category_pk):

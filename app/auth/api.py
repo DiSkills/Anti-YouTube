@@ -215,3 +215,17 @@ async def get_channel(pk: int, request: Request):
     async with async_session() as session:
         async with session.begin():
             return await service.get_channel(session, pk, request)
+
+
+@auth_router.get(
+    '/channel/videos/{pk}',
+    response_model=List[GetVideo],
+    status_code=status.HTTP_200_OK,
+    description='Get channel videos',
+    response_description='Get channel videos',
+    name='Get channel videos',
+)
+async def get_channel_videos(pk: int):
+    async with async_session() as session:
+        async with session.begin():
+            return await service.get_channel_videos(session, pk)

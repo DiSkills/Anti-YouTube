@@ -237,7 +237,7 @@ async def create_vote(db: AsyncSession, schema: CreateVote, user: User) -> Dict[
         :type user: User
         :return: Video
         :rtype: dict
-        :raise HTTPException 400: Vote exist
+        :raise HTTPException 400: Vote exist or video not found
     """
 
     if await vote_crud.exists(db, video_id=schema.video_id, user_id=user.id):
@@ -261,6 +261,7 @@ async def add_to_history(db: AsyncSession, request: Request, pk: int) -> Dict[st
         :type pk: int
         :return: Message
         :rtype: dict
+        :raise HTTPException 400: Video not found
     """
 
     if not await video_crud.exists(db, id=pk):

@@ -341,6 +341,7 @@ async def get_channel(db: AsyncSession, pk, request: Request) -> Dict[str, Any]:
         :type request: Request
         :return: Channel
         :rtype: dict
+        :raise HTTPException 400: User not found
     """
 
     if not await user_crud.exists(db, id=pk):
@@ -364,3 +365,29 @@ async def get_channel(db: AsyncSession, pk, request: Request) -> Dict[str, Any]:
         'views': views or 0,
         'count_videos': count_videos,
     }
+
+
+async def get_channel_videos(db: AsyncSession, pk: int) -> List[Dict[str, Any]]:
+    """
+        Get channel videos
+        :param db: DB
+        :type db: AsyncSession
+        :param pk: Channel ID
+        :type pk: int
+        :return: Videos
+        :rtype: list
+        :raise HTTPException 400: User not found
+    """
+
+    if not await user_crud.exists(db, id=pk):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='User not found')
+
+    videos = await video_crud.filter(db, user_id=pk)
+    return [
+        {
+            **video.__dict__,
+            'user': video.user.__dict__,
+            'votes': video_crud.get_votes(video),
+            'category': video.category.__dict__,
+        } for video in videos
+    ]
