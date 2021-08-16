@@ -1,4 +1,4 @@
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Tuple
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +13,15 @@ from app.videos.schemas import CreateVideo, VideoUpdate, CreateVote, CreateHisto
 class VideoCRUD(CRUD[Video, CreateVideo, VideoUpdate]):
     """ Video CRUD """
 
-    async def count_views_and_videos(self, db: AsyncSession, **kwargs):
+    async def count_views_and_videos(self, db: AsyncSession, **kwargs) -> Tuple[int]:
+        """
+            Count views and videos
+            :param db: DB
+            :type db: AsyncSession
+            :param kwargs: kwargs
+            :return: Count views and videos
+            :rtype: tuple
+        """
         query = await db.execute(select(sum(self.model.views), count(self.model.id)).filter_by(**kwargs))
         return list(query)[0]
 

@@ -13,7 +13,8 @@ from app.auth.schemas import (
     AccessToken,
     Password,
     ChangeUserDataResponse,
-    ChangeUserData, Channel,
+    ChangeUserData,
+    Channel,
 )
 from app.db import async_session
 from app.schemas import Message
