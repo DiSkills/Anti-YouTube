@@ -21,6 +21,7 @@ from app.auth.api import (
     get_data,
     change_data,
     upload_avatar,
+    subscriptions,
 )
 from app.auth.crud import user_crud, verification_crud
 from app.auth.permission import is_authenticated, is_active, is_superuser
@@ -35,7 +36,6 @@ from app.auth.schemas import (
 from app.auth.tokens import ALGORITHM, create_password_reset_token
 from app.config import API_V1_URL, SECRET_KEY, MEDIA_ROOT
 from app.db import engine, AsyncSession
-from app.videos.crud import video_crud
 from tests import create_all, drop_all, async_loop
 
 
@@ -65,6 +65,118 @@ class AuthTestCase(TestCase):
         async_loop(self.session.close())
         async_loop(drop_all())
         shutil.rmtree(MEDIA_ROOT)
+
+    def test_subscriptions(self):
+        self.client.post(self.url + '/register', json=self.data)
+        verification = async_loop(verification_crud.get(self.session, user_id=1)).__dict__
+        self.client.post(self.url + '/activate', json={'uuid': verification['uuid']})
+        tokens = self.client.post(self.url + '/login', data={'username': 'test', 'password': 'test1234'})
+        headers = {'Authorization': f'Bearer {tokens.json()["access_token"]}'}
+
+        self.client.post(self.url + '/register', json={**self.data, 'username': 'test2', 'email': 'test2@example.com'})
+        self.client.post(self.url + '/register', json={**self.data, 'username': 'test3', 'email': 'test3@example.com'})
+        verification = async_loop(verification_crud.get(self.session, user_id=2)).__dict__
+        self.client.post(self.url + '/activate', json={'uuid': verification['uuid']})
+
+        user_1 = async_loop(user_crud.get(self.session, id=1))
+
+        response = async_loop(subscriptions(user_1))
+        self.assertEqual(response, [])
+
+        async_loop(self.session.execute(update(user_crud.model).filter_by(id=1).values(is_superuser=True)))
+        async_loop(self.session.commit())
+        self.client.post(API_V1_URL + '/categories/', json={'name': 'FastAPI'}, headers=headers)
+
+        tokens = self.client.post(self.url + '/login', data={'username': 'test2', 'password': 'test1234'})
+        headers = {'Authorization': f'Bearer {tokens.json()["access_token"]}'}
+
+        with open('tests/image.png', 'rb') as preview:
+            with open('tests/test.mp4', 'rb') as video:
+                self.client.post(
+                    API_V1_URL + '/videos/',
+                    headers=headers,
+                    data=self.video_data,
+                    files={
+                        'preview_file': ('image.png', preview, 'image/png'),
+                        'video_file': ('test.mp4', video, 'video/mp4'),
+                    }
+                )
+        self.client.post(self.url + '/follow?to_id=3', headers=headers)
+
+        tokens = self.client.post(self.url + '/login', data={'username': 'test', 'password': 'test1234'})
+        headers = {'Authorization': f'Bearer {tokens.json()["access_token"]}'}
+        self.client.post(self.url + '/follow?to_id=2', headers=headers)
+        self.client.post(self.url + '/follow?to_id=3', headers=headers)
+
+        response = async_loop(subscriptions(async_loop(user_crud.get(self.session, id=1))))
+        self.assertEqual(len(response), 2)
+        self.assertEqual(response[0]['user']['id'], 3)
+        self.assertEqual(len(response[0]['videos']), 0)
+        self.assertEqual(response[1]['user']['id'], 2)
+        self.assertEqual(len(response[1]['videos']), 1)
+
+        user_2 = async_loop(user_crud.get(self.session, id=2))
+        response = async_loop(subscriptions(user_2))
+        self.assertEqual(len(response), 1)
+        self.assertEqual(response[0]['user']['id'], 3)
+        self.assertEqual(len(response[0]['videos']), 0)
+
+    def test_subscriptions_request(self):
+        self.client.post(self.url + '/register', json=self.data)
+        verification = async_loop(verification_crud.get(self.session, user_id=1)).__dict__
+        self.client.post(self.url + '/activate', json={'uuid': verification['uuid']})
+        tokens = self.client.post(self.url + '/login', data={'username': 'test', 'password': 'test1234'})
+        headers = {'Authorization': f'Bearer {tokens.json()["access_token"]}'}
+
+        self.client.post(self.url + '/register', json={**self.data, 'username': 'test2', 'email': 'test2@example.com'})
+        self.client.post(self.url + '/register', json={**self.data, 'username': 'test3', 'email': 'test3@example.com'})
+        verification = async_loop(verification_crud.get(self.session, user_id=2)).__dict__
+        self.client.post(self.url + '/activate', json={'uuid': verification['uuid']})
+
+        response = self.client.get(self.url + '/followed', headers=headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), [])
+
+        async_loop(self.session.execute(update(user_crud.model).filter_by(id=1).values(is_superuser=True)))
+        async_loop(self.session.commit())
+        self.client.post(API_V1_URL + '/categories/', json={'name': 'FastAPI'}, headers=headers)
+
+        tokens = self.client.post(self.url + '/login', data={'username': 'test2', 'password': 'test1234'})
+        headers = {'Authorization': f'Bearer {tokens.json()["access_token"]}'}
+
+        with open('tests/image.png', 'rb') as preview:
+            with open('tests/test.mp4', 'rb') as video:
+                self.client.post(
+                    API_V1_URL + '/videos/',
+                    headers=headers,
+                    data=self.video_data,
+                    files={
+                        'preview_file': ('image.png', preview, 'image/png'),
+                        'video_file': ('test.mp4', video, 'video/mp4'),
+                    }
+                )
+        self.client.post(self.url + '/follow?to_id=3', headers=headers)
+
+        tokens = self.client.post(self.url + '/login', data={'username': 'test', 'password': 'test1234'})
+        headers = {'Authorization': f'Bearer {tokens.json()["access_token"]}'}
+        self.client.post(self.url + '/follow?to_id=2', headers=headers)
+        self.client.post(self.url + '/follow?to_id=3', headers=headers)
+
+        response = self.client.get(self.url + '/followed', headers=headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()), 2)
+        self.assertEqual(response.json()[0]['user']['id'], 3)
+        self.assertEqual(len(response.json()[0]['videos']), 0)
+        self.assertEqual(response.json()[1]['user']['id'], 2)
+        self.assertEqual(len(response.json()[1]['videos']), 1)
+
+        tokens = self.client.post(self.url + '/login', data={'username': 'test2', 'password': 'test1234'})
+        headers = {'Authorization': f'Bearer {tokens.json()["access_token"]}'}
+        response = self.client.get(self.url + '/followed', headers=headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()), 1)
+        self.assertEqual(response.json()[0]['user']['id'], 3)
+        self.assertEqual(len(response.json()[0]['videos']), 0)
 
     def test_channel(self):
         # Get channel

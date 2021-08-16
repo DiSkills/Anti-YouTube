@@ -391,3 +391,32 @@ async def get_channel_videos(db: AsyncSession, pk: int) -> List[Dict[str, Any]]:
             'category': video.category.__dict__,
         } for video in videos
     ]
+
+
+async def subscriptions(db: AsyncSession, user: User) -> List[Dict[str, Any]]:
+    """
+        Subscriptions
+        :param db: DB
+        :type db: AsyncSession
+        :param user: User
+        :type user: User
+        :return: Subscriptions
+        :rtype: list
+    """
+    user = await user_crud.get(db, id=user.id)
+    subscriptions_list = await user_crud.get_subscriptions(db, user)
+    followed_list = []
+    for subscription in subscriptions_list:
+        followed = {
+            'user': subscription.__dict__,
+            'videos': [
+                {
+                    **video.__dict__,
+                    'user': video.user.__dict__,
+                    'votes': video_crud.get_votes(video),
+                    'category': video.category.__dict__,
+                } for video in await video_crud.filter(db, user_id=subscription.id)
+            ],
+        }
+        followed_list.append(followed)
+    return followed_list

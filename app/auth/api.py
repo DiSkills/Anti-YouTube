@@ -18,7 +18,7 @@ from app.auth.schemas import (
 )
 from app.db import async_session
 from app.schemas import Message
-from app.videos.schemas import GetVideo
+from app.videos.schemas import GetVideo, SubscriptionsVideos
 
 auth_router = APIRouter()
 
@@ -229,3 +229,17 @@ async def get_channel_videos(pk: int):
     async with async_session() as session:
         async with session.begin():
             return await service.get_channel_videos(session, pk)
+
+
+@auth_router.get(
+    '/followed',
+    response_model=List[SubscriptionsVideos],
+    status_code=status.HTTP_200_OK,
+    description='Subscriptions',
+    response_description='Subscriptions',
+    name='Subscriptions',
+)
+async def subscriptions(user: User = Depends(is_active)):
+    async with async_session() as session:
+        async with session.begin():
+            return await service.subscriptions(session, user)

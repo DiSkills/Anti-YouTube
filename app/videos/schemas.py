@@ -50,6 +50,13 @@ class GetVideo(GetVideoNotUser):
     user: UserPublic
 
 
+class SubscriptionsVideos(BaseModel):
+    """ Subscriptions videos """
+
+    user: UserPublic
+    videos: List[GetVideo]
+
+
 class VideoPaginate(Paginate):
     """ Video paginate """
 

@@ -1,8 +1,11 @@
+from typing import List
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from sqlalchemy.sql.functions import count
 
-from app.CRUD import CRUD
+from app.CRUD import CRUD, ModelType
 from app.auth.models import User, Verification, Subscriptions
 from app.auth.schemas import RegisterUser, UserUpdate, VerificationUUID
 
@@ -24,6 +27,12 @@ class UserCRUD(CRUD[User, RegisterUser, UserUpdate]):
             select(count(Subscriptions.c.subscription_id).filter(Subscriptions.c.subscription_id == pk))
         )
         return list(query)[0][0]
+
+    async def get_subscriptions(self, db: AsyncSession, user: User) -> List[ModelType]:
+        query = await db.execute(user.subscriptions.filter(Subscriptions.c.subscriber_id == user.id).options(
+            selectinload(self.model.videos),
+        ))
+        return list(map(lambda x: x[0], query))
 
 
 class VerificationCRUD(CRUD[Verification, VerificationUUID, VerificationUUID]):
