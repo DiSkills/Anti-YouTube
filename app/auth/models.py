@@ -5,6 +5,7 @@ from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, Table
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import relationship, backref
 
+from app.comments.models import Comment
 from app.db import ModelMixin, Base
 from app.videos.models import Video, Votes, History
 
@@ -45,7 +46,7 @@ class User(Base, ModelMixin):
     send_message: bool = Column(Boolean, default=True)
 
     verifications: List[Verification] = relationship(Verification, backref='user', lazy='dynamic')
-    subscriptions = relationship(
+    subscriptions: List[UserRef] = relationship(
         'User',
         secondary=Subscriptions,
         primaryjoin=lambda: User.id == Subscriptions.c.subscriber_id,
@@ -56,6 +57,7 @@ class User(Base, ModelMixin):
     videos: List[Video] = relationship(Video, backref='related_user', lazy='dynamic')
     votes: List[Votes] = relationship(Votes, backref='related_user', lazy='dynamic')
     history: List[History] = relationship(History, backref='related_user')
+    comments: List[Comment] = relationship(Comment, backref='related_user', lazy='dynamic')
 
     def __str__(self):
         return f'{self.username}'

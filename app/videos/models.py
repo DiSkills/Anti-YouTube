@@ -4,6 +4,7 @@ from typing import ForwardRef, List
 from sqlalchemy import Column, String, DateTime, BigInteger, Integer, ForeignKey
 from sqlalchemy.orm import relationship
 
+from app.comments.models import Comment
 from app.db import Base, ModelMixin
 
 Category = ForwardRef('Category')
@@ -28,6 +29,7 @@ class Video(Base, ModelMixin):
     category: Category = relationship('Category', backref='related_videos')
     user: User = relationship('User', backref='related_videos')
     votes: List[VotesRef] = relationship('Votes', backref='related_videos')
+    comments: List[Comment] = relationship(Comment, backref='related_videos', lazy='dynamic')
     histories: List[HistoryRef] = relationship('History', backref='related_videos')
 
     def __str__(self):
