@@ -34,8 +34,8 @@ class Comment(Base, ModelMixin):
     children = relationship(
         'Comment',
         secondary=CommentChildren,
-        primaryjoin=lambda: Comment.id == CommentChildren.c.children_id,
-        secondaryjoin=lambda: Comment.id == CommentChildren.c.parent_id,
+        primaryjoin=lambda: Comment.id == CommentChildren.c.parent_id,
+        secondaryjoin=lambda: Comment.id == CommentChildren.c.children_id,
         backref=backref('parent', lazy='dynamic'),
         lazy='dynamic'
     )

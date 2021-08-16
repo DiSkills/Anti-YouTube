@@ -1,9 +1,11 @@
+from typing import List
+
 from fastapi import APIRouter, status, Depends
 
 from app.auth.models import User
 from app.auth.permission import is_active
 from app.comments import service
-from app.comments.schemas import CreateComment, GetComment
+from app.comments.schemas import CreateComment, GetCommentParent, GetAllComments
 from app.db import async_session
 
 comments_router = APIRouter()
@@ -11,7 +13,7 @@ comments_router = APIRouter()
 
 @comments_router.get(
     '/video/{pk}',
-    # response_model=List[GetAllComments],
+    response_model=List[GetAllComments],
     status_code=status.HTTP_200_OK,
     description='Get comments for video',
     response_description='Get comments for video',
@@ -26,7 +28,7 @@ async def get_comments(pk: int):
 @comments_router.post(
     '/',
     status_code=status.HTTP_201_CREATED,
-    response_model=GetComment,
+    response_model=GetCommentParent,
     description='Create comment',
     response_description='Create comment',
     name='Create comment',

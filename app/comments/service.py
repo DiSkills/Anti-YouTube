@@ -14,7 +14,7 @@ async def get_children(db: AsyncSession, comments: List[Comment]):
     res = []
     for comment in comments:
         c = {
-            # 'parent': comment['parent'],
+            'parent_id': list(await db.execute(comment.parent))[0][0].id,
             'id': comment.id,
             'text': comment.text,
             'created_at': comment.created_at,
@@ -34,7 +34,7 @@ async def comment_tree(db: AsyncSession, comments: List[Comment]):
     res = []
     for comment in comments:
         c = {
-            # 'parent': comment['parent'],
+            'parent_id': None,
             'id': comment.id,
             'text': comment.text,
             'created_at': comment.created_at,
@@ -87,6 +87,7 @@ async def create_comment(db: AsyncSession, schema: CreateComment, user: User):
         **new_comment.__dict__,
         'user': new_comment.user.__dict__,
         'parent': {**parent.__dict__, 'user': parent.user.__dict__} if parent else None,
+        'parent_id': parent.id if parent else None,
     }
 
 

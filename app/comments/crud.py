@@ -41,6 +41,15 @@ class CommentCRUD(CRUD[Comment, CreateComment, CreateComment]):
         return query.scalars()
 
     async def get_children(self, db: AsyncSession, comment: Comment):
+        """
+            Get children comment
+            :param db: DB
+            :type db: AsyncSession
+            :param comment: Comment
+            :type comment: Comment
+            :return: Children comment
+            :rtype: list
+        """
         return list(map(lambda x: x[0], await db.execute(comment.children)))
 
 
