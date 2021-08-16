@@ -3,13 +3,20 @@ from fastapi import APIRouter, status, Depends
 from app.auth.models import User
 from app.auth.permission import is_active
 from app.comments import service
-from app.comments.schemas import CreateComment
+from app.comments.schemas import CreateComment, GetComment
 from app.db import async_session
 
 comments_router = APIRouter()
 
 
-@comments_router.post('/', status_code=status.HTTP_201_CREATED)
+@comments_router.post(
+    '/',
+    status_code=status.HTTP_201_CREATED,
+    response_model=GetComment,
+    description='Create comment',
+    response_description='Create comment',
+    name='Create comment',
+)
 async def create_comment(schema: CreateComment, user: User = Depends(is_active)):
     async with async_session() as session:
         async with session.begin():

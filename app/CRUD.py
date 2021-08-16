@@ -96,7 +96,7 @@ class CRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         obj = self.model(**{**data, **kwargs})
         db.add(obj)
         await db.flush()
-        return obj
+        return await self.get(db, id=obj.id)
 
     async def remove(self, db: AsyncSession, **kwargs) -> None:
         """

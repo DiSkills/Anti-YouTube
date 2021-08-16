@@ -23,6 +23,8 @@ async def create_comment(db: AsyncSession, schema: CreateComment, user: User):
     if not await video_crud.exists(db, id=schema.video_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Video not found')
 
+    parent = None
+
     if schema.parent_id:
         if not await comment_crud.exists(db, id=schema.parent_id):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Parent not found')
@@ -37,4 +39,8 @@ async def create_comment(db: AsyncSession, schema: CreateComment, user: User):
     if is_child:
         parent.children.append(new_comment)
 
-    return new_comment
+    return {
+        **new_comment.__dict__,
+        'user': new_comment.user.__dict__,
+        'parent': {**parent.__dict__, 'user': parent.user.__dict__} if parent else None,
+    }
