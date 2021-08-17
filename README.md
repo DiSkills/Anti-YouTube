@@ -2,18 +2,7 @@
 
 # `Installing`
 
-    create database postgres
-    
-    create file "config.env" how "config.example.env"
-
-    pip install poetry
-    
-    poetry install --no-dev
-
-    python main.py
-
-
-# `Installing Docker (don't working)`
+    Need front-end: https://github.com/Counter0021/Anti-YouTube-front-end
 
     create file "config.docker.env" how "config.docker.example.env"
 

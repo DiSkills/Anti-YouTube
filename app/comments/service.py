@@ -7,6 +7,7 @@ from app.auth.models import User
 from app.comments.crud import comment_crud
 from app.comments.models import Comment
 from app.comments.schemas import CreateComment
+from app.comments.send_emails import send_new_comment_email
 from app.videos.crud import video_crud
 
 
@@ -83,6 +84,21 @@ async def create_comment(db: AsyncSession, schema: CreateComment, user: User) ->
 
     if is_child:
         parent.children.append(new_comment)
+
+    video = await video_crud.get(db, id=schema.video_id)
+
+    if parent:
+        if parent.user.id != user.id:
+            send_new_comment_email(
+                parent.user.email,
+                parent.user,
+                video,
+                new_comment,
+            )
+            if (user.id != video.user.id) and (parent.user.id != video.user.id):
+                send_new_comment_email(video.user.email, video.user, video, new_comment)
+    elif user.id != video.user.id:
+        send_new_comment_email(video.user.email, video.user, video, new_comment)
 
     return {
         **new_comment.__dict__,
