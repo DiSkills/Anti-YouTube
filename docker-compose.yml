@@ -35,3 +35,19 @@ services:
     depends_on:
       - postgres
       - api
+
+  worker:
+    build: ./
+    command: poetry run celery -A app.tasks.celery worker -l INFO
+    volumes:
+      - ./:/site
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - api
+      - redis
+
+
+  redis:
+    image: redis:6-alpine

@@ -24,7 +24,7 @@ def send_new_account_email(email_to: str, username: str, password: str, uuid: UU
     with open(Path(EMAIL_TEMPLATES_DIR) / 'new_account.html') as f:
         template_str = f.read()
     link = f'{SERVER_HOST_FRONT_END}/verify/?token={uuid}'
-    send_email(
+    send_email.delay(
         email_to=email_to,
         subject_template=subject,
         html_template=template_str,
@@ -57,7 +57,7 @@ def send_reset_password_email(email_to: str, username: str, password: str, token
     with open(Path(EMAIL_TEMPLATES_DIR) / 'reset_password.html') as f:
         template_str = f.read()
     link = f'{SERVER_HOST_FRONT_END}/password-reset/?token={token}'
-    send_email(
+    send_email.delay(
         email_to=email_to,
         subject_template=subject,
         html_template=template_str,
@@ -84,7 +84,7 @@ def send_username_email(email_to: str, username: str) -> None:
     subject = f'{project_name} - Get username'
     with open(Path(EMAIL_TEMPLATES_DIR) / 'get_username.html') as f:
         template_str = f.read()
-    send_email(
+    send_email.delay(
         email_to=email_to,
         subject_template=subject,
         html_template=template_str,
@@ -94,4 +94,3 @@ def send_username_email(email_to: str, username: str) -> None:
             'email': email_to,
         },
     )
-
