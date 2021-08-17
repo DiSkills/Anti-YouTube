@@ -14,7 +14,8 @@ from app.auth.schemas import (
     Password,
     ChangeUserDataResponse,
     ChangeUserData,
-    Channel, ChangePassword,
+    Channel,
+    ChangePassword,
 )
 from app.db import async_session
 from app.schemas import Message
@@ -247,7 +248,7 @@ async def subscriptions(user: User = Depends(is_active)):
 
 @auth_router.put(
     '/change-password',
-    # response_model=Message,
+    response_model=Message,
     status_code=status.HTTP_200_OK,
     description='Change password',
     response_description='Change password',
