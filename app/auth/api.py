@@ -14,7 +14,7 @@ from app.auth.schemas import (
     Password,
     ChangeUserDataResponse,
     ChangeUserData,
-    Channel,
+    Channel, ChangePassword,
 )
 from app.db import async_session
 from app.schemas import Message
@@ -243,3 +243,17 @@ async def subscriptions(user: User = Depends(is_active)):
     async with async_session() as session:
         async with session.begin():
             return await service.subscriptions(session, user)
+
+
+@auth_router.put(
+    '/change-password',
+    # response_model=Message,
+    status_code=status.HTTP_200_OK,
+    description='Change password',
+    response_description='Change password',
+    name='Change password',
+)
+async def change_password(schema: ChangePassword, user: User = Depends(is_active)):
+    async with async_session() as session:
+        async with session.begin():
+            return await service.change_password(session, schema, user)

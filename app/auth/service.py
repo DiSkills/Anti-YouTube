@@ -16,10 +16,11 @@ from app.auth.schemas import (
     RefreshToken,
     Password,
     ChangeUserData,
-    UploadAvatar,
+    UploadAvatar, ChangePassword,
 )
 from app.auth.security import get_password_hash, verify_password
-from app.auth.send_emails import send_new_account_email, send_reset_password_email, send_username_email
+from app.auth.send_emails import send_new_account_email, send_reset_password_email, send_username_email, \
+    send_about_change_password
 from app.auth.tokens import create_token, verify_refresh_token, create_password_reset_token, verify_password_reset_token
 from app.config import MEDIA_ROOT
 from app.files import remove_file, write_file
@@ -420,3 +421,26 @@ async def subscriptions(db: AsyncSession, user: User) -> List[Dict[str, Any]]:
         }
         followed_list.append(followed)
     return followed_list
+
+
+async def change_password(db: AsyncSession, schema: ChangePassword, user: User) -> Dict[str, str]:
+    """
+        Change password
+        :param db: DB
+        :type db: AsyncSession
+        :param schema: Change data
+        :type schema: ChangePassword
+        :param user: User
+        :type user: User
+        :return: Message
+        :rtype: dict
+    """
+
+    if not verify_password(schema.old_password, user.password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Old password mismatch')
+
+    del schema.old_password
+    del schema.confirm_password
+    await user_crud.update(db, user.id, schema, password=get_password_hash(schema.password))
+    send_about_change_password(user.email, user.username, schema.password)
+    return {'msg': 'Password has been changed'}
