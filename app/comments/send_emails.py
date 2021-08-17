@@ -29,7 +29,7 @@ def send_new_comment_email(email_to: str, author: User, video: Video, comment: C
     with open(Path(EMAIL_TEMPLATES_DIR) / 'new_comment.html') as f:
         template_str = f.read()
     link = f'{SERVER_HOST_FRONT_END}/videos/{video.id}'
-    send_email.delay(
+    send_email(
         email_to=email_to,
         subject_template=subject,
         html_template=template_str,
