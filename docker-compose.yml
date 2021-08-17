@@ -22,6 +22,7 @@ services:
       - postgres
     ports:
       - "8000:8000"
+    command: poetry run uvicorn app.app:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - ./:/site
 
@@ -44,6 +45,8 @@ services:
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DOCKER=1
+      - TESTS=0
     depends_on:
       - api
       - redis
