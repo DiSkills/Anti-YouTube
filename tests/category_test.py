@@ -46,7 +46,7 @@ class CategoryTestCase(TestCase):
         }
         self.url = API_V1_URL + '/categories'
         async_loop(create_all())
-        os.mkdir(MEDIA_ROOT)
+        os.makedirs(MEDIA_ROOT)
 
     def tearDown(self) -> None:
         async_loop(self.session.close())

@@ -32,7 +32,7 @@ async def startup():
         await createsuperuser_docker()
 
     if not os.path.exists(MEDIA_ROOT):
-        os.mkdir(MEDIA_ROOT)
+        os.makedirs(MEDIA_ROOT)
 
 
 from app.routers import routers

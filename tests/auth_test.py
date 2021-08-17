@@ -22,6 +22,7 @@ from app.auth.api import (
     change_data,
     upload_avatar,
     subscriptions,
+    change_password,
 )
 from app.auth.crud import user_crud, verification_crud
 from app.auth.permission import is_authenticated, is_active, is_superuser
@@ -32,7 +33,9 @@ from app.auth.schemas import (
     Password,
     ChangeUserDataResponse,
     ChangeUserData,
+    ChangePassword,
 )
+from app.auth.security import verify_password
 from app.auth.tokens import ALGORITHM, create_password_reset_token
 from app.config import API_V1_URL, SECRET_KEY, MEDIA_ROOT
 from app.db import engine, AsyncSession
@@ -59,12 +62,89 @@ class AuthTestCase(TestCase):
         }
         self.url = API_V1_URL + '/auth'
         async_loop(create_all())
-        os.mkdir(MEDIA_ROOT)
+        os.makedirs(MEDIA_ROOT)
 
     def tearDown(self) -> None:
         async_loop(self.session.close())
         async_loop(drop_all())
         shutil.rmtree(MEDIA_ROOT)
+
+    def test_change_password(self):
+        self.client.post(self.url + '/register', json=self.data)
+        verification = async_loop(verification_crud.get(self.session, user_id=1)).__dict__
+        self.client.post(self.url + '/activate', json={'uuid': verification['uuid']})
+        tokens = self.client.post(self.url + '/login', data={'username': 'test', 'password': 'test1234'})
+
+        self.assertEqual(verify_password('test1234', async_loop(user_crud.get(self.session, id=1)).password), True)
+        user = async_loop(user_crud.get(self.session, id=1))
+
+        response = async_loop(
+            change_password(
+                ChangePassword(password='test12345', confirm_password='test12345', old_password='test1234'),
+                user,
+            )
+        )
+        async_loop(self.session.commit())
+        self.assertEqual(response, {'msg': 'Password has been changed'})
+        self.assertEqual(verify_password('test1234', async_loop(user_crud.get(self.session, id=1)).password), False)
+        self.assertEqual(verify_password('test12345', async_loop(user_crud.get(self.session, id=1)).password), True)
+
+        with self.assertRaises(ValueError) as error:
+            async_loop(
+                change_password(
+                    ChangePassword(password='test12345', confirm_password='test12345', old_password='test12345'),
+                    user,
+                )
+            )
+
+        with self.assertRaises(HTTPException) as error:
+            async_loop(
+                change_password(
+                    ChangePassword(password='test12345', confirm_password='test12345', old_password='test'),
+                    user,
+                )
+            )
+
+    def test_change_password_request(self):
+        self.client.post(self.url + '/register', json=self.data)
+        verification = async_loop(verification_crud.get(self.session, user_id=1)).__dict__
+        self.client.post(self.url + '/activate', json={'uuid': verification['uuid']})
+        tokens = self.client.post(self.url + '/login', data={'username': 'test', 'password': 'test1234'})
+        headers = {'Authorization': f'Bearer {tokens.json()["access_token"]}'}
+
+        self.assertEqual(verify_password('test1234', async_loop(user_crud.get(self.session, id=1)).password), True)
+
+        response = self.client.put(
+            self.url + '/change-password', headers=headers, json={
+                'old_password': 'test1234',
+                'password': 'test12345',
+                'confirm_password': 'test12345',
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'msg': 'Password has been changed'})
+        self.assertEqual(verify_password('test1234', async_loop(user_crud.get(self.session, id=1)).password), False)
+        self.assertEqual(verify_password('test12345', async_loop(user_crud.get(self.session, id=1)).password), True)
+
+        response = self.client.put(
+            self.url + '/change-password', headers=headers, json={
+                'old_password': 'test12345',
+                'password': 'test12345',
+                'confirm_password': 'test12345',
+            },
+        )
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.json()['detail'][0]['msg'], 'Old password and new password match')
+
+        response = self.client.put(
+            self.url + '/change-password', headers=headers, json={
+                'old_password': 'test',
+                'password': 'test12345',
+                'confirm_password': 'test12345',
+            },
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()['detail'], 'Old password mismatch')
 
     def test_subscriptions(self):
         self.client.post(self.url + '/register', json=self.data)

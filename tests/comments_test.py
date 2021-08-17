@@ -55,7 +55,7 @@ class CommentTestCase(TestCase):
         self.client = TestClient(app)
         self.url = API_V1_URL + '/comments'
         async_loop(create_all())
-        os.mkdir(MEDIA_ROOT)
+        os.makedirs(MEDIA_ROOT)
 
         self.user_data = {
             'password': 'test1234',
