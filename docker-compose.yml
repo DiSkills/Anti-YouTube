@@ -24,6 +24,7 @@ services:
       - redis
     volumes:
       - ../frontend:/app/frontend
+      - /app/frontend/node_modules
     ports:
       - "3000:3000"
 
