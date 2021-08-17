@@ -10,3 +10,5 @@ COPY pyproject.toml .
 RUN poetry install --no-dev
 
 COPY . .
+
+EXPOSE 8000

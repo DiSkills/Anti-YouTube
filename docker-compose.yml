@@ -12,6 +12,21 @@ services:
     ports:
       - "5432:5432"
 
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    command: npm start
+    depends_on:
+      - api
+      - postgres
+      - worker
+      - redis
+    volumes:
+      - ../frontend:/app/frontend
+    ports:
+      - "3000:3000"
+
   api:
     build:
       context: ./
@@ -36,6 +51,7 @@ services:
     depends_on:
       - postgres
       - api
+      - frontend
 
   worker:
     build: ./
