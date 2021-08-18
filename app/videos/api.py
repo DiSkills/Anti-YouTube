@@ -1,3 +1,5 @@
+from typing import List
+
 from fastapi import APIRouter, status, Form, UploadFile, File, Depends, Query, Request
 from fastapi.responses import StreamingResponse
 
@@ -9,6 +11,20 @@ from app.videos import service
 from app.videos.schemas import GetVideo, CreateVideo, VideoPaginate, CreateVote, VideoUpdate
 
 videos_router = APIRouter()
+
+
+@videos_router.get(
+    '/search',
+    status_code=status.HTTP_200_OK,
+    response_model=List[GetVideo],
+    description='Search videos',
+    response_description='Search videos',
+    name='Search videos',
+)
+async def search_videos(q: str):
+    async with async_session() as session:
+        async with session.begin():
+            return await service.search_videos(session, q)
 
 
 @videos_router.post(

@@ -11,7 +11,15 @@ from app.app import app
 from app.auth.crud import verification_crud, user_crud
 from app.config import MEDIA_ROOT, API_V1_URL
 from app.db import engine
-from app.videos.api import create_video, get_video, get_all_videos, delete_video, create_vote, update_video
+from app.videos.api import (
+    create_video,
+    get_video,
+    get_all_videos,
+    delete_video,
+    create_vote,
+    update_video,
+    search_videos,
+)
 from app.videos.crud import video_crud, vote_crud, history_crud
 from app.videos.schemas import CreateVote
 from tests import create_all, drop_all, async_loop
@@ -288,13 +296,25 @@ class VideosTestCase(TestCase):
                 response = async_loop(
                     update_video(
                         pk=3,
-                        **{**self.data, 'title': 'Test 2'},
+                        **{**self.data, 'title': 'Anti-YouTube 2'},
                         video_file=UploadFile(video.name, video, content_type='video/mp4'),
                         preview_file=UploadFile(preview.name, preview, content_type='image/png'),
                         user=user_3,
                     )
                 )
-        self.assertEqual(response['title'], 'Test 2')
+        self.assertEqual(response['title'], 'Anti-YouTube 2')
+
+        response = async_loop(search_videos('2'))
+        self.assertEqual(len(response), 1)
+        self.assertEqual(response[0]['id'], 3)
+
+        response = async_loop(search_videos('anti'))
+        self.assertEqual(len(response), 2)
+        self.assertEqual(response[0]['id'], 3)
+        self.assertEqual(response[1]['id'], 2)
+
+        response = async_loop(search_videos('example'))
+        self.assertEqual(len(response), 0)
 
     def test_videos_request(self):
         self.client.post(API_V1_URL + '/auth/register', json=self.user_data)
@@ -638,11 +658,26 @@ class VideosTestCase(TestCase):
                 response = self.client.put(
                     self.url + '/3',
                     headers=headers,
-                    data={**self.data, 'title': 'Test 2'},
+                    data={**self.data, 'title': 'Anti-YouTube 2'},
                     files={
                         'preview_file': ('image.png', preview, 'image/png'),
                         'video_file': ('test.mp4', video, 'video/mp4'),
                     }
                 )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()['title'], 'Test 2')
+        self.assertEqual(response.json()['title'], 'Anti-YouTube 2')
+
+        response = self.client.get(self.url + '/search?q=2')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()), 1)
+        self.assertEqual(response.json()[0]['id'], 3)
+
+        response = self.client.get(self.url + '/search?q=anti')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()), 2)
+        self.assertEqual(response.json()[0]['id'], 3)
+        self.assertEqual(response.json()[1]['id'], 2)
+
+        response = self.client.get(self.url + '/search?q=example')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()), 0)

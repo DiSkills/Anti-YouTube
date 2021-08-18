@@ -340,3 +340,24 @@ async def clear_history(db: AsyncSession, user: User) -> Dict[str, str]:
     """
     await history_crud.remove(db, user_id=user.id)
     return {'msg': 'History cleared'}
+
+
+async def search_videos(db: AsyncSession, q: str) -> List[Dict[str, Any]]:
+    """
+        Search videos
+        :param db: DB
+        :type db: AsyncSession
+        :param q: Query
+        :type q: str
+        :return: Videos
+        :rtype: str
+    """
+
+    return [
+        {
+            **video.__dict__,
+            'user': video.user.__dict__,
+            'category': video.category.__dict__,
+            'votes': video_crud.get_votes(video),
+        } for video in await video_crud.search(db, q)
+    ]

@@ -1,6 +1,6 @@
 from typing import Optional, List, Dict, Tuple
 
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.sql.functions import count, sum
@@ -12,6 +12,28 @@ from app.videos.schemas import CreateVideo, VideoUpdate, CreateVote, CreateHisto
 
 class VideoCRUD(CRUD[Video, CreateVideo, VideoUpdate]):
     """ Video CRUD """
+
+    async def search(self, db: AsyncSession, search: str) -> List[ModelType]:
+        """
+            Search
+            :param db: DB
+            :type db: AsyncSession
+            :param search: Search string (query)
+            :type search: str
+            :return: Models
+            :rtype: list
+        """
+        query = await db.execute(
+            select(self.model).options(
+                selectinload(self.model.category), selectinload(self.model.user), selectinload(self.model.votes),
+            ).filter(
+                or_(
+                    self.model.title.ilike(f'%{search}%'),
+                    self.model.description.ilike(f'%{search}%'),
+                )
+            ).order_by(self.model.id.desc())
+        )
+        return list(map(lambda x: x[0], query))
 
     async def count_views_and_videos(self, db: AsyncSession, **kwargs) -> Tuple[int]:
         """
