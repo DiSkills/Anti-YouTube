@@ -328,7 +328,7 @@ async def update_video(
     }
 
 
-async def clear_history(db: AsyncSession, user: User):
+async def clear_history(db: AsyncSession, user: User) -> Dict[str, str]:
     """
         Clear history
         :param db: DB
