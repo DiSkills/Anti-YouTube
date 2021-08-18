@@ -552,6 +552,22 @@ class VideosTestCase(TestCase):
         self.assertEqual(async_loop(video_crud.get(self.session, id=2)).views, 2)
         self.assertEqual(len(async_loop(history_crud.all(self.session))), 2)
 
+        # Clear history
+
+        tokens = self.client.post(API_V1_URL + '/auth/login', data={'username': 'test', 'password': 'test1234'})
+        headers = {'Authorization': f'Bearer {tokens.json()["access_token"]}'}
+        self.client.post(self.url + '/add-to-history?pk=2', headers=headers)
+
+        tokens = self.client.post(API_V1_URL + '/auth/login', data={'username': 'test2', 'password': 'test1234'})
+
+        headers = {'Authorization': f'Bearer {tokens.json()["access_token"]}'}
+
+        self.assertEqual(len(async_loop(history_crud.all(self.session))), 3)
+        response = self.client.delete(self.url + '/history/clear', headers=headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'msg': 'History cleared'})
+        self.assertEqual(len(async_loop(history_crud.all(self.session))), 1)
+
         # Update video
         video_3 = async_loop(video_crud.get(self.session, id=3))
         tokens = self.client.post(API_V1_URL + '/auth/login', data={'username': 'test', 'password': 'test1234'})

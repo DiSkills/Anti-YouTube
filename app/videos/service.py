@@ -326,3 +326,17 @@ async def update_video(
         'category': video_updated.category.__dict__,
         'votes': video_crud.get_votes(video),
     }
+
+
+async def clear_history(db: AsyncSession, user: User):
+    """
+        Clear history
+        :param db: DB
+        :type db: AsyncSession
+        :param user: User
+        :type user: User
+        :return: Message
+        :rtype: dict
+    """
+    await history_crud.remove(db, user_id=user.id)
+    return {'msg': 'History cleared'}

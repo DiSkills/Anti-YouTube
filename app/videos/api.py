@@ -151,3 +151,17 @@ async def update_video(
         async with session.begin():
             schema: VideoUpdate = VideoUpdate(title=title, description=description, category_id=category_id)
             return await service.update_video(session, pk, schema, video_file, preview_file, user)
+
+
+@videos_router.delete(
+    '/history/clear',
+    status_code=status.HTTP_200_OK,
+    response_model=Message,
+    description='Clear history',
+    response_description='Clear history',
+    name='Clear history',
+)
+async def clear_history(user: User = Depends(is_active)):
+    async with async_session() as session:
+        async with session.begin():
+            return await service.clear_history(session, user)
