@@ -809,6 +809,7 @@ class AuthTestCase(TestCase):
         response = self.client.post(self.url + '/login', data={'username': 'test', 'password': 'test1234'})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['token_type'], 'bearer')
+        self.assertEqual(response.json()['user_id'], 1)
         self.assertEqual('access_token' and 'refresh_token' in response.json(), True)
         self.assertEqual(
             jwt.decode(response.json()['access_token'], SECRET_KEY, algorithms=[ALGORITHM])['user_id'], 1
@@ -830,6 +831,7 @@ class AuthTestCase(TestCase):
 
         response = async_loop(login(username='test', password='test1234'))
         self.assertEqual(response['token_type'], 'bearer')
+        self.assertEqual(response['user_id'], 1)
         self.assertEqual('access_token' and 'refresh_token' in response, True)
         self.assertEqual(
             jwt.decode(response['access_token'], SECRET_KEY, algorithms=[ALGORITHM])['user_id'], 1

@@ -84,6 +84,7 @@ class Tokens(RefreshToken, AccessToken):
     """ Login tokens """
 
     token_type: str
+    user_id: int
 
 
 class TokenPayload(BaseModel):
