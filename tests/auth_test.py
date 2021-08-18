@@ -36,7 +36,7 @@ from app.auth.schemas import (
     ChangePassword,
 )
 from app.auth.security import verify_password
-from app.auth.tokens import ALGORITHM, create_password_reset_token
+from app.auth.tokens import ALGORITHM, create_password_reset_token, create_token
 from app.config import API_V1_URL, SECRET_KEY, MEDIA_ROOT
 from app.db import engine, AsyncSession
 from tests import create_all, drop_all, async_loop
@@ -439,6 +439,9 @@ class AuthTestCase(TestCase):
     def test_reset_password_request(self):
         self.client.post(self.url + '/register', json=self.data)
 
+        verification = async_loop(verification_crud.get(self.session, user_id=1)).__dict__
+        self.client.post(self.url + '/activate', json={'uuid': verification['uuid']})
+
         # Create reset password
 
         response = self.client.get(self.url + f'/request-password-reset?email={self.data["email"]}')
@@ -490,6 +493,9 @@ class AuthTestCase(TestCase):
     def test_reset_password(self):
         self.client.post(self.url + '/register', json=self.data)
 
+        verification = async_loop(verification_crud.get(self.session, user_id=1)).__dict__
+        self.client.post(self.url + '/activate', json={'uuid': verification['uuid']})
+
         # Create reset password
 
         response = async_loop(create_reset_password(self.data["email"]))
@@ -534,9 +540,9 @@ class AuthTestCase(TestCase):
 
     def test_following_request(self):
         self.client.post(self.url + '/register', json=self.data)
-        tokens = self.client.post(self.url + '/login', data={'username': 'test', 'password': 'test1234'})
         verification = async_loop(verification_crud.get(self.session, user_id=1)).__dict__
         self.client.post(self.url + '/activate', json={'uuid': verification['uuid']})
+        tokens = self.client.post(self.url + '/login', data={'username': 'test', 'password': 'test1234'})
 
         self.client.post(self.url + '/register', json={**self.data, 'username': 'test2', 'email': 'test2@example.com'})
 
@@ -635,40 +641,40 @@ class AuthTestCase(TestCase):
             async_loop(is_authenticated('test'))
 
         self.client.post(self.url + '/register', json=self.data)
-        tokens = self.client.post(self.url + '/login', data={'username': 'test', 'password': 'test1234'})
-        response = async_loop(is_authenticated(tokens.json()['access_token']))
+        tokens = create_token(1, 'test')
+        response = async_loop(is_authenticated(tokens['access_token']))
         self.assertEqual(response.id, 1)
 
         with self.assertRaises(HTTPException) as error:
-            async_loop(is_authenticated(tokens.json()['refresh_token']))
+            async_loop(is_authenticated(tokens['refresh_token']))
 
         with self.assertRaises(HTTPException) as error:
             token = create_password_reset_token(self.data['email'])
             async_loop(is_authenticated(token))
 
         with self.assertRaises(HTTPException) as error:
-            async_loop(is_active(async_loop(is_authenticated(tokens.json()['access_token']))))
+            async_loop(is_active(async_loop(is_authenticated(tokens['access_token']))))
 
         verification = async_loop(verification_crud.get(self.session, user_id=1)).__dict__
         self.client.post(self.url + '/activate', json={'uuid': verification['uuid']})
 
-        response = async_loop(is_active(async_loop(is_authenticated(tokens.json()['access_token']))))
+        response = async_loop(is_active(async_loop(is_authenticated(tokens['access_token']))))
         self.assertEqual(response.id, 1)
 
         with self.assertRaises(HTTPException) as error:
-            async_loop(is_superuser(async_loop(is_active(async_loop(is_authenticated(tokens.json()['access_token']))))))
+            async_loop(is_superuser(async_loop(is_active(async_loop(is_authenticated(tokens['access_token']))))))
 
         async_loop(self.session.execute(update(user_crud.model).filter_by(id=1).values(is_superuser=True)))
         async_loop(self.session.commit())
         response = async_loop(
-            is_superuser(async_loop(is_active(async_loop(is_authenticated(tokens.json()['access_token'])))))
+            is_superuser(async_loop(is_active(async_loop(is_authenticated(tokens['access_token'])))))
         )
         self.assertEqual(response.id, 1)
 
         with self.assertRaises(HTTPException) as error:
             async_loop(user_crud.remove(self.session, id=1))
             async_loop(self.session.commit())
-            async_loop(is_authenticated(tokens.json()['access_token']))
+            async_loop(is_authenticated(tokens['access_token']))
 
     def test_register_request(self):
 
@@ -807,6 +813,13 @@ class AuthTestCase(TestCase):
         self.client.post(self.url + '/register', json=self.data)
 
         response = self.client.post(self.url + '/login', data={'username': 'test', 'password': 'test1234'})
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json(), {'detail': 'You not activated'})
+
+        verification = async_loop(verification_crud.get(self.session, user_id=1)).__dict__
+        self.client.post(self.url + '/activate', json={'uuid': verification['uuid']})
+
+        response = self.client.post(self.url + '/login', data={'username': 'test', 'password': 'test1234'})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['token_type'], 'bearer')
         self.assertEqual(response.json()['user_id'], 1)
@@ -829,6 +842,12 @@ class AuthTestCase(TestCase):
     def test_login(self):
         self.client.post(self.url + '/register', json=self.data)
 
+        with self.assertRaises(HTTPException) as error:
+            async_loop(login(username='test', password='test1234'))
+
+        verification = async_loop(verification_crud.get(self.session, user_id=1)).__dict__
+        self.client.post(self.url + '/activate', json={'uuid': verification['uuid']})
+
         response = async_loop(login(username='test', password='test1234'))
         self.assertEqual(response['token_type'], 'bearer')
         self.assertEqual(response['user_id'], 1)
@@ -848,6 +867,8 @@ class AuthTestCase(TestCase):
 
     def test_refresh_token_request(self):
         self.client.post(self.url + '/register', json=self.data)
+        verification = async_loop(verification_crud.get(self.session, user_id=1)).__dict__
+        self.client.post(self.url + '/activate', json={'uuid': verification['uuid']})
 
         tokens = self.client.post(self.url + '/login', data={'username': 'test', 'password': 'test1234'})
 
@@ -867,10 +888,6 @@ class AuthTestCase(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json(), {'detail': 'Refresh token not found'})
 
-        verification = async_loop(verification_crud.get(self.session, user_id=1))
-
-        self.client.post(self.url + '/activate', json={'uuid': verification.uuid})
-
         async_loop(user_crud.remove(self.session, id=1))
         async_loop(self.session.commit())
 
@@ -880,6 +897,8 @@ class AuthTestCase(TestCase):
 
     def test_refresh_token(self):
         self.client.post(self.url + '/register', json=self.data)
+        verification = async_loop(verification_crud.get(self.session, user_id=1)).__dict__
+        self.client.post(self.url + '/activate', json={'uuid': verification['uuid']})
 
         tokens = self.client.post(self.url + '/login', data={'username': 'test', 'password': 'test1234'})
 
@@ -895,10 +914,6 @@ class AuthTestCase(TestCase):
 
         with self.assertRaises(HTTPException) as error:
             async_loop(refresh(RefreshToken(refresh_token=tokens.json()['access_token'])))
-
-        verification = async_loop(verification_crud.get(self.session, user_id=1))
-
-        self.client.post(self.url + '/activate', json={'uuid': verification.uuid})
 
         async_loop(user_crud.remove(self.session, id=1))
         async_loop(self.session.commit())

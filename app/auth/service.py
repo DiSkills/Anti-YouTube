@@ -125,6 +125,9 @@ async def login(db: AsyncSession, username: str, password: str) -> Dict[str, str
     if not verify_password(schema.password, user.password):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Password mismatch')
 
+    if not user.is_active:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You not activated')
+
     return {**create_token(user.id, user.username), 'user_id': user.id}
 
 
