@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Union
 from uuid import uuid4
 
 from fastapi import status, HTTPException, UploadFile, Request
@@ -104,7 +104,19 @@ async def activate(db: AsyncSession, schema: VerificationUUID) -> Dict[str, str]
     return {'msg': 'Account has been is activated'}
 
 
-async def validation_login(db: AsyncSession, username: str, password: str):
+async def validation_login(db: AsyncSession, username: str, password: str) -> User:
+    """
+        Validation login data
+        :param db: DB
+        :type db: AsyncSession
+        :param username: Username
+        :type username: str
+        :param password: Password
+        :type password: str
+        :return: User
+        :rtype: User
+        :raise HTTPException 400: User not exist or password mismatch or user not activated
+    """
     schema = LoginUser(username=username, password=password)
 
     if not await user_crud.exists(db, username=schema.username):
@@ -120,7 +132,7 @@ async def validation_login(db: AsyncSession, username: str, password: str):
     return user
 
 
-async def login(db: AsyncSession, username: str, password: str) -> Dict[str, str]:
+async def login(db: AsyncSession, username: str, password: str) -> Dict[str, Union[str, int]]:
     """
         Login
         :param db: DB
@@ -131,7 +143,7 @@ async def login(db: AsyncSession, username: str, password: str) -> Dict[str, str
         :type password: str
         :return: Tokens
         :rtype: dict
-        :raise HTTPException 400: User not exist or password mismatch
+        :raise HTTPException 403: User has 2-step auth
     """
 
     user = await validation_login(db, username, password)
@@ -142,7 +154,20 @@ async def login(db: AsyncSession, username: str, password: str) -> Dict[str, str
     return {**create_token(user.id, user.username), 'user_id': user.id}
 
 
-async def two_auth(db: AsyncSession, username: str, password: str, code: str):
+async def two_auth(db: AsyncSession, username: str, password: str, code: str) -> Dict[str, Union[str, int]]:
+    """
+        2-step auth
+        :param db: DB
+        :type db: AsyncSession
+        :param username: Username
+        :type username: str
+        :param password: Password
+        :type password: str
+        :param code: Auth code
+        :type code: str
+        :return: Tokens
+        :rtype: dict
+    """
 
     user = await validation_login(db, username, password)
     if not user.two_auth:
