@@ -17,7 +17,9 @@ from app.auth.schemas import (
     RefreshToken,
     Password,
     ChangeUserData,
-    UploadAvatar, ChangePassword, Change2StepAuth,
+    UploadAvatar,
+    ChangePassword,
+    Change2StepAuth,
 )
 from app.auth.security import get_password_hash, verify_password
 from app.auth.send_emails import send_new_account_email, send_reset_password_email, send_username_email, \
@@ -469,7 +471,16 @@ async def change_password(db: AsyncSession, schema: ChangePassword, user: User) 
     return {'msg': 'Password has been changed'}
 
 
-async def toggle_2step_auth(db: AsyncSession, user: User):
+async def toggle_2step_auth(db: AsyncSession, user: User) -> Dict[str, str]:
+    """
+        Toggle 2-step auth
+        :param db: DB
+        :type db: AsyncSession
+        :param user: User
+        :type user: User
+        :return: Message or QR url
+        :rtype: dict
+    """
     if user.two_auth:
         await user_crud.update(db, user.id, Change2StepAuth(two_auth=False))
         return {'msg': 'You off 2-step auth'}

@@ -4,6 +4,8 @@ from pydantic import BaseModel, EmailStr, validator
 
 
 class Change2StepAuth(BaseModel):
+    """ Change 2-step auth """
+
     two_auth: bool
 
 
