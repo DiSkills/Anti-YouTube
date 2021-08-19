@@ -5,6 +5,7 @@ from unittest import TestCase
 import jwt
 from fastapi import HTTPException, UploadFile
 from fastapi.testclient import TestClient
+from pyotp import TOTP
 from sqlalchemy import update
 
 from app.app import app
@@ -23,6 +24,8 @@ from app.auth.api import (
     upload_avatar,
     subscriptions,
     change_password,
+    two_auth,
+    toggle_2step_auth,
 )
 from app.auth.crud import user_crud, verification_crud
 from app.auth.permission import is_authenticated, is_active, is_superuser
@@ -819,16 +822,16 @@ class AuthTestCase(TestCase):
         verification = async_loop(verification_crud.get(self.session, user_id=1)).__dict__
         self.client.post(self.url + '/activate', json={'uuid': verification['uuid']})
 
-        response = self.client.post(self.url + '/login', data={'username': 'test', 'password': 'test1234'})
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()['token_type'], 'bearer')
-        self.assertEqual(response.json()['user_id'], 1)
-        self.assertEqual('access_token' and 'refresh_token' in response.json(), True)
+        tokens = self.client.post(self.url + '/login', data={'username': 'test', 'password': 'test1234'})
+        self.assertEqual(tokens.status_code, 200)
+        self.assertEqual(tokens.json()['token_type'], 'bearer')
+        self.assertEqual(tokens.json()['user_id'], 1)
+        self.assertEqual('access_token' and 'refresh_token' in tokens.json(), True)
         self.assertEqual(
-            jwt.decode(response.json()['access_token'], SECRET_KEY, algorithms=[ALGORITHM])['user_id'], 1
+            jwt.decode(tokens.json()['access_token'], SECRET_KEY, algorithms=[ALGORITHM])['user_id'], 1
         )
         self.assertEqual(
-            jwt.decode(response.json()['refresh_token'], SECRET_KEY, algorithms=[ALGORITHM])['username'], 'test'
+            jwt.decode(tokens.json()['refresh_token'], SECRET_KEY, algorithms=[ALGORITHM])['username'], 'test'
         )
 
         response = self.client.post(self.url + '/login', data={'username': 'admin', 'password': 'test1234'})
@@ -839,6 +842,59 @@ class AuthTestCase(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json(), {'detail': 'Password mismatch'})
 
+        headers = {'Authorization': f'Bearer {tokens.json()["access_token"]}'}
+
+        self.assertEqual(async_loop(user_crud.get(self.session, id=1)).two_auth, False)
+
+        response = self.client.get(self.url + '/2-auth-toggle', headers=headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual('otpauth://totp/Anti-YouTube:test?secret=' in response.json()['msg'], True)
+        self.assertEqual(async_loop(user_crud.get(self.session, id=1)).two_auth, True)
+
+        response = self.client.post(self.url + '/login', data={'username': 'test', 'password': 'test1234'})
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json(), {'detail': 'You have 2-step auth'})
+
+        user = async_loop(user_crud.get(self.session, id=1))
+
+        response = self.client.post(
+            self.url + '/2-auth',
+            data={'username': 'test', 'password': 'test1234', 'code': TOTP(user.otp_secret).now()},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['token_type'], 'bearer')
+        self.assertEqual(response.json()['user_id'], 1)
+        self.assertEqual('access_token' and 'refresh_token' in response.json(), True)
+        self.assertEqual(
+            jwt.decode(response.json()['access_token'], SECRET_KEY, algorithms=[ALGORITHM])['user_id'], 1
+        )
+        self.assertEqual(
+            jwt.decode(response.json()['refresh_token'], SECRET_KEY, algorithms=[ALGORITHM])['username'], 'test'
+        )
+        response = self.client.post(
+            self.url + '/2-auth',
+            data={'username': 'test', 'password': 'test1234', 'code': 'test'},
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json(), {'detail': 'Bad code'})
+
+        response = self.client.get(self.url + '/2-auth-toggle', headers=headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual('otpauth://totp/Anti-YouTube:test?secret=' in response.json()['msg'], False)
+        self.assertEqual(response.json(), {'msg': 'You off 2-step auth'})
+        async_loop(self.session.commit())
+        self.assertEqual(async_loop(user_crud.get(self.session, id=1)).two_auth, False)
+
+        response = self.client.post(self.url + '/login', data={'username': 'test', 'password': 'test1234'})
+        self.assertEqual(response.status_code, 200)
+
+        response = self.client.post(
+            self.url + '/2-auth',
+            data={'username': 'test', 'password': 'test1234', 'code': TOTP(user.otp_secret).now()},
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json(), {'detail': 'You don\'t have 2-step auth'})
+
     def test_login(self):
         self.client.post(self.url + '/register', json=self.data)
 
@@ -848,7 +904,39 @@ class AuthTestCase(TestCase):
         verification = async_loop(verification_crud.get(self.session, user_id=1)).__dict__
         self.client.post(self.url + '/activate', json={'uuid': verification['uuid']})
 
-        response = async_loop(login(username='test', password='test1234'))
+        tokens = async_loop(login(username='test', password='test1234'))
+        self.assertEqual(tokens['token_type'], 'bearer')
+        self.assertEqual(tokens['user_id'], 1)
+        self.assertEqual('access_token' and 'refresh_token' in tokens, True)
+        self.assertEqual(
+            jwt.decode(tokens['access_token'], SECRET_KEY, algorithms=[ALGORITHM])['user_id'], 1
+        )
+        self.assertEqual(
+            jwt.decode(tokens['refresh_token'], SECRET_KEY, algorithms=[ALGORITHM])['username'], 'test'
+        )
+
+        with self.assertRaises(HTTPException) as error:
+            async_loop(login(username='admin', password='test1234'))
+
+        with self.assertRaises(HTTPException) as error:
+            async_loop(login(username='test', password='test'))
+            
+        self.assertEqual(async_loop(user_crud.get(self.session, id=1)).two_auth, False)
+
+        response = async_loop(toggle_2step_auth(async_loop(user_crud.get(self.session, id=1))))
+        self.assertEqual('otpauth://totp/Anti-YouTube:test?secret=' in response['msg'], True)
+        async_loop(self.session.commit())
+        self.assertEqual(async_loop(user_crud.get(self.session, id=1)).two_auth, True)
+
+        with self.assertRaises(HTTPException) as error:
+            async_loop(login(**{'username': 'test', 'password': 'test1234'}))
+
+        user = async_loop(user_crud.get(self.session, id=1))
+
+        response = async_loop(
+            two_auth(**{'username': 'test', 'password': 'test1234', 'code': TOTP(user.otp_secret).now()})
+        )
+
         self.assertEqual(response['token_type'], 'bearer')
         self.assertEqual(response['user_id'], 1)
         self.assertEqual('access_token' and 'refresh_token' in response, True)
@@ -860,10 +948,20 @@ class AuthTestCase(TestCase):
         )
 
         with self.assertRaises(HTTPException) as error:
-            async_loop(login(username='admin', password='test1234'))
+            async_loop(two_auth(**{'username': 'test', 'password': 'test1234', 'code': 'test'}))
+
+        response = async_loop(toggle_2step_auth(async_loop(user_crud.get(self.session, id=1))))
+
+        self.assertEqual('otpauth://totp/Anti-YouTube:test?secret=' in response['msg'], False)
+        self.assertEqual(response, {'msg': 'You off 2-step auth'})
+        async_loop(self.session.commit())
+        self.assertEqual(async_loop(user_crud.get(self.session, id=1)).two_auth, False)
+
+        response = async_loop(login(**{'username': 'test', 'password': 'test1234'}))
+        self.assertEqual('access_token' in response.keys(), True)
 
         with self.assertRaises(HTTPException) as error:
-            async_loop(login(username='test', password='test'))
+            async_loop(two_auth(**{'username': 'test', 'password': 'test1234', 'code': TOTP(user.otp_secret).now()}))
 
     def test_refresh_token_request(self):
         self.client.post(self.url + '/register', json=self.data)
@@ -954,7 +1052,7 @@ class AuthTestCase(TestCase):
         # Get data
         response = self.client.get(self.url + '/change-data', headers=headers)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), ChangeUserDataResponse(**self.data, avatar=''))
+        self.assertEqual(response.json(), ChangeUserDataResponse(**self.data, avatar='', two_auth=False))
 
         # Put data
         response = self.client.put(self.url + '/change-data', headers=headers, json={
@@ -964,7 +1062,8 @@ class AuthTestCase(TestCase):
         self.assertEqual(response.json()['about'], 'test')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
-            response.json(), ChangeUserDataResponse(**{**self.data, 'send_message': False, 'about': 'test'}, avatar='')
+            response.json(),
+            ChangeUserDataResponse(**{**self.data, 'send_message': False, 'about': 'test'}, avatar='', two_auth=False)
         )
 
     def test_change_data(self):

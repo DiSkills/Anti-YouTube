@@ -3,6 +3,10 @@ from typing import Optional
 from pydantic import BaseModel, EmailStr, validator
 
 
+class Change2StepAuth(BaseModel):
+    two_auth: bool
+
+
 class Password(BaseModel):
     """ Password """
 
@@ -108,7 +112,8 @@ class UploadAvatar(BaseModel):
 
 class ChangeUserDataResponse(ChangeUserData, UploadAvatar):
     """ Change user data response """
-    pass
+
+    two_auth: bool
 
 
 class RegisterAdmin(RegisterUser):

@@ -1,6 +1,7 @@
 from typing import List, ForwardRef
 
 from fastapi import HTTPException, status
+from pyotp import random_base32
 from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, Table
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import relationship, backref
@@ -44,6 +45,8 @@ class User(Base, ModelMixin):
     avatar: str = Column(String, nullable=True, default='')
     about: str = Column(String(255), nullable=False)
     send_message: bool = Column(Boolean, default=True)
+    otp_secret: str = Column(String, default=random_base32)
+    two_auth: bool = Column(Boolean, default=False)
 
     verifications: List[Verification] = relationship(Verification, backref='user', lazy='dynamic')
     subscriptions: List[UserRef] = relationship(

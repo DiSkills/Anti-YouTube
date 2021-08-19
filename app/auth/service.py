@@ -3,6 +3,7 @@ from typing import Dict, Any, List
 from uuid import uuid4
 
 from fastapi import status, HTTPException, UploadFile, Request
+from pyotp import TOTP
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.crud import user_crud, verification_crud
@@ -16,7 +17,7 @@ from app.auth.schemas import (
     RefreshToken,
     Password,
     ChangeUserData,
-    UploadAvatar, ChangePassword,
+    UploadAvatar, ChangePassword, Change2StepAuth,
 )
 from app.auth.security import get_password_hash, verify_password
 from app.auth.send_emails import send_new_account_email, send_reset_password_email, send_username_email, \
@@ -101,6 +102,22 @@ async def activate(db: AsyncSession, schema: VerificationUUID) -> Dict[str, str]
     return {'msg': 'Account has been is activated'}
 
 
+async def validation_login(db: AsyncSession, username: str, password: str):
+    schema = LoginUser(username=username, password=password)
+
+    if not await user_crud.exists(db, username=schema.username):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='User not found')
+
+    user = await user_crud.get(db, username=schema.username)
+
+    if not verify_password(schema.password, user.password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Password mismatch')
+
+    if not user.is_active:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You not activated')
+    return user
+
+
 async def login(db: AsyncSession, username: str, password: str) -> Dict[str, str]:
     """
         Login
@@ -115,19 +132,22 @@ async def login(db: AsyncSession, username: str, password: str) -> Dict[str, str
         :raise HTTPException 400: User not exist or password mismatch
     """
 
-    schema = LoginUser(username=username, password=password)
+    user = await validation_login(db, username, password)
 
-    if not await user_crud.exists(db, username=schema.username):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='User not found')
+    if user.two_auth:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You have 2-step auth')
 
-    user = await user_crud.get(db, username=schema.username)
+    return {**create_token(user.id, user.username), 'user_id': user.id}
 
-    if not verify_password(schema.password, user.password):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Password mismatch')
 
-    if not user.is_active:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You not activated')
+async def two_auth(db: AsyncSession, username: str, password: str, code: str):
 
+    user = await validation_login(db, username, password)
+    if not user.two_auth:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You don\'t have 2-step auth')
+    totp = TOTP(user.otp_secret)
+    if not totp.verify(code):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Bad code')
     return {**create_token(user.id, user.username), 'user_id': user.id}
 
 
@@ -447,3 +467,12 @@ async def change_password(db: AsyncSession, schema: ChangePassword, user: User) 
     await user_crud.update(db, user.id, schema, password=get_password_hash(schema.password))
     send_about_change_password(user.email, user.username, schema.password)
     return {'msg': 'Password has been changed'}
+
+
+async def toggle_2step_auth(db: AsyncSession, user: User):
+    if user.two_auth:
+        await user_crud.update(db, user.id, Change2StepAuth(two_auth=False))
+        return {'msg': 'You off 2-step auth'}
+    qr_url = TOTP(user.otp_secret).provisioning_uri(name=user.username, issuer_name='Anti-YouTube')
+    await user_crud.update(db, user.id, Change2StepAuth(two_auth=True))
+    return {'msg': qr_url}

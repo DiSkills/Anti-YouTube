@@ -258,3 +258,17 @@ async def change_password(schema: ChangePassword, user: User = Depends(is_active
     async with async_session() as session:
         async with session.begin():
             return await service.change_password(session, schema, user)
+
+
+@auth_router.post('/2-auth')
+async def two_auth(username: str = Form(...), password: str = Form(...), code: str = Form(...)):
+    async with async_session() as session:
+        async with session.begin():
+            return await service.two_auth(session, username, password, code)
+
+
+@auth_router.get('/2-auth-toggle')
+async def toggle_2step_auth(user: User = Depends(is_active)):
+    async with async_session() as session:
+        async with session.begin():
+            return await service.toggle_2step_auth(session, user)
