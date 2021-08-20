@@ -483,6 +483,22 @@ class AuthTestCase(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json(), {'detail': 'Reset token not found'})
 
+        otp = async_loop(user_crud.get(self.session, id=1)).otp_secret
+
+        self.client.get(
+            self.url + '/2-auth-toggle', headers={'Authorization': f'Bearer {tokens["access_token"]}'}
+        )
+
+        response = self.client.post(
+            self.url + f'/password-reset?token={token}',
+            json={'password': 'test123456', 'confirm_password': 'test123456'}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'msg': 'Password has been reset'})
+        async_loop(self.session.commit())
+        self.assertNotEqual(async_loop(user_crud.get(self.session, id=1)).otp_secret, otp)
+        self.assertEqual(async_loop(user_crud.get(self.session, id=1)).two_auth, False)
+
         async_loop(user_crud.remove(self.session, id=1))
         async_loop(self.session.commit())
 
@@ -532,6 +548,20 @@ class AuthTestCase(TestCase):
                     tokens['refresh_token'], Password(password='test123456', confirm_password='test123456')
                 )
             )
+
+        otp = async_loop(user_crud.get(self.session, id=1)).otp_secret
+
+        self.client.get(
+            self.url + '/2-auth-toggle', headers={'Authorization': f'Bearer {tokens["access_token"]}'}
+        )
+
+        response = async_loop(
+            verify_password_reset(token, Password(password='test123456', confirm_password='test123456'))
+        )
+        self.assertEqual(response, {'msg': 'Password has been reset'})
+        async_loop(self.session.commit())
+        self.assertNotEqual(async_loop(user_crud.get(self.session, id=1)).otp_secret, otp)
+        self.assertEqual(async_loop(user_crud.get(self.session, id=1)).two_auth, False)
 
         async_loop(user_crud.remove(self.session, id=1))
         async_loop(self.session.commit())

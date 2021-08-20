@@ -3,7 +3,7 @@ from typing import Dict, Any, List, Union
 from uuid import uuid4
 
 from fastapi import status, HTTPException, UploadFile, Request
-from pyotp import TOTP
+from pyotp import TOTP, random_base32
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.crud import user_crud, verification_crud
@@ -278,7 +278,9 @@ async def verify_password_reset(db: AsyncSession, token: str, schema: Password) 
 
     del schema.confirm_password
 
-    await user_crud.update(db, user.id, schema, password=get_password_hash(schema.password))
+    await user_crud.update(
+        db, user.id, schema, password=get_password_hash(schema.password), two_auth=False, otp_secret=random_base32(),
+    )
     return {'msg': 'Password has been reset'}
 
 
