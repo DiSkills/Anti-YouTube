@@ -91,6 +91,7 @@ class Tokens(RefreshToken, AccessToken):
 
     token_type: str
     user_id: int
+    is_superuser: bool
 
 
 class TokenPayload(BaseModel):

@@ -151,7 +151,7 @@ async def login(db: AsyncSession, username: str, password: str) -> Dict[str, Uni
     if user.two_auth:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You have 2-step auth')
 
-    return {**create_token(user.id, user.username), 'user_id': user.id}
+    return {**create_token(user.id, user.username), 'user_id': user.id, 'is_superuser': user.is_superuser}
 
 
 async def two_auth(db: AsyncSession, username: str, password: str, code: str) -> Dict[str, Union[str, int]]:
