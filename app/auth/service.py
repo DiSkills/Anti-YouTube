@@ -3,6 +3,7 @@ from typing import Dict, Any, List, Union
 from uuid import uuid4
 
 from fastapi import status, HTTPException, UploadFile, Request
+from passlib.utils import generate_password
 from pyotp import TOTP, random_base32
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -132,7 +133,7 @@ async def validation_login(db: AsyncSession, username: str, password: str) -> Us
     return user
 
 
-async def login(db: AsyncSession, username: str, password: str) -> Dict[str, Union[str, int]]:
+async def login(db: AsyncSession, username: str, password: str) -> Dict[str, Union[str, int, bool]]:
     """
         Login
         :param db: DB
@@ -154,7 +155,7 @@ async def login(db: AsyncSession, username: str, password: str) -> Dict[str, Uni
     return {**create_token(user.id, user.username), 'user_id': user.id, 'is_superuser': user.is_superuser}
 
 
-async def two_auth(db: AsyncSession, username: str, password: str, code: str) -> Dict[str, Union[str, int]]:
+async def two_auth(db: AsyncSession, username: str, password: str, code: str) -> Dict[str, Union[str, int, bool]]:
     """
         2-step auth
         :param db: DB
@@ -514,3 +515,40 @@ async def toggle_2step_auth(db: AsyncSession, user: User) -> Dict[str, str]:
     qr_url = TOTP(user.otp_secret).provisioning_uri(name=user.username, issuer_name='Anti-YouTube')
     await user_crud.update(db, user.id, Change2StepAuth(two_auth=True))
     return {'msg': qr_url}
+
+
+async def google_auth(db: AsyncSession, user: Dict[str, Union[str, bool, int]]) -> Dict[str, Union[str, int, bool]]:
+    """
+        Google social auth
+        :param db: db
+        :type db: AsyncSession
+        :param user: Google user data
+        :type user: dict
+        :return: Tokens
+        :rtype: dict
+    """
+    if await user_crud.exists(db, email=user['email']):
+        user = await user_crud.get(db, email=user['email'])
+        return {**create_token(user.id, user.username), 'user_id': user.id, 'is_superuser': user.is_superuser}
+
+    password = generate_password()
+
+    schema = RegisterUser(
+        password=password,
+        confirm_password=password,
+        username=user['name'],
+        email=user['email'],
+        about='',
+        send_message=True,
+    )
+
+    del schema.confirm_password
+
+    user = await user_crud.create(
+        db,
+        schema,
+        password=get_password_hash(schema.password),
+        is_active=True,
+    )
+
+    return {**create_token(user.id, user.username), 'user_id': user.id, 'is_superuser': user.is_superuser}

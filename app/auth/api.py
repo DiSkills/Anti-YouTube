@@ -296,7 +296,7 @@ async def toggle_2step_auth(user: User = Depends(is_active)):
     name='Google login',
 )
 async def google_login(request: Request):
-    redirect_uri = request.url_for('google_auth')
+    redirect_uri = 'http://localhost:8000/api/v1/auth/google-auth'
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 
@@ -307,6 +307,8 @@ async def google_login(request: Request):
     name='Google auth',
 )
 async def google_auth(request: Request):
-    token = await oauth.google.authorize_access_token(request)
-    user = await oauth.google.parse_id_token(request, token)
-    return user
+    async with async_session() as session:
+        async with session.begin():
+            token = await oauth.google.authorize_access_token(request)
+            user = await oauth.google.parse_id_token(request, token)
+            return await service.google_auth(session, user)
