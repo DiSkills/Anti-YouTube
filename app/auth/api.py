@@ -261,27 +261,51 @@ async def change_password(schema: ChangePassword, user: User = Depends(is_active
             return await service.change_password(session, schema, user)
 
 
-@auth_router.post('/2-auth')
+@auth_router.post(
+    '/2-auth',
+    response_model=Tokens,
+    status_code=status.HTTP_200_OK,
+    description='2-step login',
+    response_description='2-step login',
+    name='2-step login',
+)
 async def two_auth(username: str = Form(...), password: str = Form(...), code: str = Form(...)):
     async with async_session() as session:
         async with session.begin():
             return await service.two_auth(session, username, password, code)
 
 
-@auth_router.get('/2-auth-toggle')
+@auth_router.get(
+    '/2-auth-toggle',
+    response_model=Message,
+    status_code=status.HTTP_200_OK,
+    description='On/off 2-step',
+    response_description='On/off 2-step',
+    name='On/off 2-step',
+)
 async def toggle_2step_auth(user: User = Depends(is_active)):
     async with async_session() as session:
         async with session.begin():
             return await service.toggle_2step_auth(session, user)
 
 
-@auth_router.get('/google-login')
+@auth_router.get(
+    '/google-login',
+    description='Google login',
+    response_description='Google login',
+    name='Google login',
+)
 async def google_login(request: Request):
     redirect_uri = request.url_for('google_auth')
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 
-@auth_router.get('/google-auth')
+@auth_router.get(
+    '/google-auth',
+    description='Google auth',
+    response_description='Google auth',
+    name='Google auth',
+)
 async def google_auth(request: Request):
     token = await oauth.google.authorize_access_token(request)
     user = await oauth.google.parse_id_token(request, token)

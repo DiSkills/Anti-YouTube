@@ -175,7 +175,7 @@ async def two_auth(db: AsyncSession, username: str, password: str, code: str) ->
     totp = TOTP(user.otp_secret)
     if not totp.verify(code):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Bad code')
-    return {**create_token(user.id, user.username), 'user_id': user.id}
+    return {**create_token(user.id, user.username), 'user_id': user.id, 'is_superuser': user.is_superuser}
 
 
 async def follow(db: AsyncSession, to_id: int, user: User) -> Dict[str, str]:
