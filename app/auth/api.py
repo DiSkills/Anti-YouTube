@@ -302,6 +302,7 @@ async def google_login(request: Request):
 
 @auth_router.get(
     '/google-auth',
+    response_model=Tokens,
     description='Google auth',
     response_description='Google auth',
     name='Google auth',
