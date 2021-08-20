@@ -2,8 +2,9 @@ import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 
-from app.config import TESTS, API_V1_URL, MEDIA_ROOT, DOCKER
+from app.config import TESTS, API_V1_URL, MEDIA_ROOT, DOCKER, SECRET_KEY
 from app.db import engine, Base
 from scripts.createsuperuser import createsuperuser_docker
 
@@ -19,6 +20,11 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=['*'],
     allow_headers=['*'],
+)
+
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SECRET_KEY,
 )
 
 

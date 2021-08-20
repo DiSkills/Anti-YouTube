@@ -17,6 +17,7 @@ from app.auth.schemas import (
     Channel,
     ChangePassword,
 )
+from app.config import oauth
 from app.db import async_session
 from app.schemas import Message
 from app.videos.schemas import GetVideo, SubscriptionsVideos
@@ -272,3 +273,16 @@ async def toggle_2step_auth(user: User = Depends(is_active)):
     async with async_session() as session:
         async with session.begin():
             return await service.toggle_2step_auth(session, user)
+
+
+@auth_router.get('/google-login')
+async def google_login(request: Request):
+    redirect_uri = request.url_for('google_auth')
+    return await oauth.google.authorize_redirect(request, redirect_uri)
+
+
+@auth_router.get('/google-auth')
+async def google_auth(request: Request):
+    token = await oauth.google.authorize_access_token(request)
+    user = await oauth.google.parse_id_token(request, token)
+    return user

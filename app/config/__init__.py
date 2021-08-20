@@ -1,3 +1,4 @@
+from authlib.integrations.starlette_client import OAuth
 from dotenv import load_dotenv
 
 import os
@@ -56,3 +57,16 @@ EMAILS_FROM_NAME = PROJECT_NAME
 EMAIL_RESET_TOKEN_EXPIRE_HOURS = 48
 EMAIL_TEMPLATES_DIR = r'email-templates/build'
 EMAILS_ENABLED = SMTP_HOST and SMTP_PORT and EMAILS_FROM_EMAIL
+
+CONF_GOOGLE_URL = 'https://accounts.google.com/.well-known/openid-configuration'
+oauth = OAuth()
+
+oauth.register(
+    name='google',
+    server_metadata_url=CONF_GOOGLE_URL,
+    client_kwargs={
+        'scope': 'openid email profile'
+    },
+    client_id=os.environ.get('GOOGLE_CLIENT_ID'),
+    client_secret=os.environ.get('GOOGLE_CLIENT_SECRET'),
+)
