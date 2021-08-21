@@ -10,6 +10,7 @@
 ![API version](https://img.shields.io/badge/API-v0.3.3-orange)
 ![tests](https://img.shields.io/badge/tests-passing-success)
 ![Coverage](https://img.shields.io/badge/coverage-93%25-brightgreen)
+![Open Source? Yes!](https://badgen.net/badge/Open%20Source%20%3F/Yes%21/blue?icon=github)
 
 ### `Back-end`
 ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
