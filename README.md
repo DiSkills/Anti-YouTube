@@ -5,7 +5,7 @@
 </div>
 
 ## Technology stack
-![Python percent](https://img.shields.io/github/languages/top/Counter0021/Anti-YouTube-back-end.svg)
+![Python percent](https://img.shields.io/github/languages/top/Counter0021/Anti-YouTube-back-end)
 ![Python version](https://img.shields.io/badge/python-3.8.10-green)
 ![API version](https://img.shields.io/badge/API-v0.3.3-orange)
 ![tests](https://img.shields.io/badge/tests-passing-success)
