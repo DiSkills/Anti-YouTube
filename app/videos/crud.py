@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Tuple
 
 from sqlalchemy import select, or_
@@ -12,6 +13,23 @@ from app.videos.schemas import CreateVideo, VideoUpdate, CreateVote, CreateHisto
 
 class VideoCRUD(CRUD[Video, CreateVideo, VideoUpdate]):
     """ Video CRUD """
+
+    async def trends(self, db) -> List[ModelType]:
+        """
+            Trends
+            :param db: DB
+            :type db: AsyncSession
+            :return: Models
+            :rtype: list
+        """
+        query = await db.execute(
+            select(self.model).options(
+                selectinload(self.model.category), selectinload(self.model.user), selectinload(self.model.votes),
+            ).filter(self.model.created_at > datetime.utcnow() - timedelta(days=30)).order_by(
+                self.model.views.desc()
+            ).limit(10)
+        )
+        return query.scalars().all()
 
     async def search(self, db: AsyncSession, search: str) -> List[ModelType]:
         """

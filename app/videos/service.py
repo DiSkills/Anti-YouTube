@@ -361,3 +361,22 @@ async def search_videos(db: AsyncSession, q: str) -> List[Dict[str, Any]]:
             'votes': video_crud.get_votes(video),
         } for video in await video_crud.search(db, q)
     ]
+
+
+async def trends(db: AsyncSession) -> List[Dict[str, Any]]:
+    """
+        Trends
+        :param db: DB
+        :type db: AsyncSession
+        :return: Videos
+        :rtype: list
+    """
+
+    return [
+        {
+            **video.__dict__,
+            'user': video.user.__dict__,
+            'category': video.category.__dict__,
+            'votes': video_crud.get_votes(video),
+        } for video in await video_crud.trends(db)
+    ]

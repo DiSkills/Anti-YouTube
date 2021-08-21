@@ -14,6 +14,20 @@ videos_router = APIRouter()
 
 
 @videos_router.get(
+    '/trends',
+    status_code=status.HTTP_200_OK,
+    response_model=List[GetVideo],
+    description='Trends',
+    response_description='Trends',
+    name='Trends',
+)
+async def trends():
+    async with async_session() as session:
+        async with session.begin():
+            return await service.trends(session)
+
+
+@videos_router.get(
     '/search',
     status_code=status.HTTP_200_OK,
     response_model=List[GetVideo],
