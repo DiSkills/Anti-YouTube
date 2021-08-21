@@ -81,8 +81,7 @@
 
 
 ## `Installing`
-
-    Need front-end: https://github.com/Counter0021/Anti-YouTube-front-end
+<a href="https://github.com/Counter0021/Anti-YouTube-front-end">A front is needed</a>
 
     create file "config.docker.env" how "config.docker.example.env"
 
