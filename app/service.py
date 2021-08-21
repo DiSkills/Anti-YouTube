@@ -1,4 +1,5 @@
 import os
+from typing import Dict, Any
 
 from fastapi import HTTPException, status
 from fastapi.responses import FileResponse
@@ -25,10 +26,29 @@ async def get_file(file_name: str) -> FileResponse:
 
 
 def paginate(crud, url):
+    """
+        Paginate decorator
+        :param crud: CRUD
+        :param url: url
+        :type url: str
+        :return: wrapper
+    """
 
     def paginate_wrapper(function):
+        """
+            Wrapper
+            :param function: Function
+            :return: wrapper
+        """
 
-        async def wrapper(*args, **kwargs):
+        async def wrapper(*args, **kwargs) -> Dict[str, Any]:
+            """
+                Wrapper
+                :param args: args
+                :param kwargs: kwargs
+                :return: Pagination results
+                :rtype: dict
+            """
             skip = PAGINATE_SIZE * (kwargs['page'] - 1)
             queryset = await crud.all(kwargs['db'], skip, PAGINATE_SIZE)
 
