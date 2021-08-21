@@ -4,8 +4,8 @@
 ![Python percent](https://img.shields.io/github/languages/top/Counter0021/Anti-YouTube-back-end.svg)
 ![Python version](https://img.shields.io/badge/python-3.8.10-green)
 ![API version](https://img.shields.io/badge/API-v0.3.3-orange)
-![tests](https://img.shields.io/badge/Tests-passing-success)
-![Coverage](https://img.shields.io/badge/Coverage-93%25-brightgreen)
+![tests](https://img.shields.io/badge/tests-passing-success)
+![Coverage](https://img.shields.io/badge/coverage-93%25-brightgreen)
 
 ### `Back-end`
 ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
