@@ -1,5 +1,6 @@
 import os
 import shutil
+from datetime import datetime, timedelta
 from unittest import TestCase
 
 from fastapi import UploadFile, HTTPException
@@ -19,8 +20,10 @@ from app.videos.api import (
     create_vote,
     update_video,
     search_videos,
+    trends,
 )
 from app.videos.crud import video_crud, vote_crud, history_crud
+from app.videos.models import Video
 from app.videos.schemas import CreateVote
 from tests import create_all, drop_all, async_loop
 
@@ -681,3 +684,162 @@ class VideosTestCase(TestCase):
         response = self.client.get(self.url + '/search?q=example')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.json()), 0)
+
+    def test_trends_request(self):
+        self.client.post(API_V1_URL + '/auth/register', json=self.user_data)
+        verification = async_loop(verification_crud.get(self.session, user_id=1)).__dict__
+        self.client.post(API_V1_URL + '/auth/activate', json={'uuid': verification['uuid']})
+        tokens = self.client.post(API_V1_URL + '/auth/login', data={'username': 'test', 'password': 'test1234'})
+
+        async_loop(self.session.execute(update(user_crud.model).filter_by(id=1).values(is_superuser=True)))
+        async_loop(self.session.commit())
+
+        headers = {'Authorization': f'Bearer {tokens.json()["access_token"]}'}
+        self.client.post(API_V1_URL + '/categories/', json=self.category_data, headers=headers)
+
+        response = self.client.get(self.url + '/trends')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()), 0)
+
+        with open('tests/image.png', 'rb') as preview:
+            with open('tests/test.mp4', 'rb') as video:
+                self.client.post(
+                    self.url + '/',
+                    headers=headers,
+                    data=self.data,
+                    files={
+                        'preview_file': ('image.png', preview, 'image/png'),
+                        'video_file': ('test.mp4', video, 'video/mp4'),
+                    }
+                )
+
+        with open('tests/image.png', 'rb') as preview:
+            with open('tests/test.mp4', 'rb') as video:
+                self.client.post(
+                    self.url + '/',
+                    headers=headers,
+                    data=self.data,
+                    files={
+                        'preview_file': ('image.png', preview, 'image/png'),
+                        'video_file': ('test.mp4', video, 'video/mp4'),
+                    }
+                )
+
+        with open('tests/image.png', 'rb') as preview:
+            with open('tests/test.mp4', 'rb') as video:
+                self.client.post(
+                    self.url + '/',
+                    headers=headers,
+                    data=self.data,
+                    files={
+                        'preview_file': ('image.png', preview, 'image/png'),
+                        'video_file': ('test.mp4', video, 'video/mp4'),
+                    }
+                )
+
+        async_loop(
+            self.session.execute(
+                update(Video).filter(Video.id == 1).values(created_at=datetime.utcnow() - timedelta(days=50), views=1500)
+            )
+        )
+        async_loop(self.session.execute(update(Video).filter(Video.id == 2).values(views=1000)))
+        async_loop(self.session.execute(update(Video).filter(Video.id == 3).values(views=1500)))
+        async_loop(self.session.commit())
+
+        response = self.client.get(self.url + '/trends')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()), 2)
+        self.assertEqual(response.json()[0]['id'], 3)
+        self.assertEqual(response.json()[0]['views'], 1500)
+        self.assertEqual(response.json()[1]['id'], 2)
+        self.assertEqual(response.json()[1]['views'], 1000)
+
+        async_loop(
+            self.session.execute(
+                update(Video).filter(Video.id == 3).values(created_at=datetime.utcnow() - timedelta(days=50))
+            )
+        )
+        async_loop(self.session.commit())
+        response = self.client.get(self.url + '/trends')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()), 1)
+        self.assertEqual(response.json()[0]['id'], 2)
+        self.assertEqual(response.json()[0]['views'], 1000)
+
+    def test_trends(self):
+        self.client.post(API_V1_URL + '/auth/register', json=self.user_data)
+        verification = async_loop(verification_crud.get(self.session, user_id=1)).__dict__
+        self.client.post(API_V1_URL + '/auth/activate', json={'uuid': verification['uuid']})
+        tokens = self.client.post(API_V1_URL + '/auth/login', data={'username': 'test', 'password': 'test1234'})
+
+        async_loop(self.session.execute(update(user_crud.model).filter_by(id=1).values(is_superuser=True)))
+        async_loop(self.session.commit())
+
+        headers = {'Authorization': f'Bearer {tokens.json()["access_token"]}'}
+        self.client.post(API_V1_URL + '/categories/', json=self.category_data, headers=headers)
+
+        response = async_loop(trends())
+        self.assertEqual(len(response), 0)
+
+        with open('tests/image.png', 'rb') as preview:
+            with open('tests/test.mp4', 'rb') as video:
+                self.client.post(
+                    self.url + '/',
+                    headers=headers,
+                    data=self.data,
+                    files={
+                        'preview_file': ('image.png', preview, 'image/png'),
+                        'video_file': ('test.mp4', video, 'video/mp4'),
+                    }
+                )
+
+        with open('tests/image.png', 'rb') as preview:
+            with open('tests/test.mp4', 'rb') as video:
+                self.client.post(
+                    self.url + '/',
+                    headers=headers,
+                    data=self.data,
+                    files={
+                        'preview_file': ('image.png', preview, 'image/png'),
+                        'video_file': ('test.mp4', video, 'video/mp4'),
+                    }
+                )
+
+        with open('tests/image.png', 'rb') as preview:
+            with open('tests/test.mp4', 'rb') as video:
+                self.client.post(
+                    self.url + '/',
+                    headers=headers,
+                    data=self.data,
+                    files={
+                        'preview_file': ('image.png', preview, 'image/png'),
+                        'video_file': ('test.mp4', video, 'video/mp4'),
+                    }
+                )
+
+        async_loop(
+            self.session.execute(
+                update(Video).filter(Video.id == 1).values(created_at=datetime.utcnow() - timedelta(days=50), views=1500)
+            )
+        )
+        async_loop(self.session.execute(update(Video).filter(Video.id == 2).values(views=1000)))
+        async_loop(self.session.execute(update(Video).filter(Video.id == 3).values(views=1500)))
+        async_loop(self.session.commit())
+
+        response = async_loop(trends())
+        self.assertEqual(len(response), 2)
+        self.assertEqual(response[0]['id'], 3)
+        self.assertEqual(response[0]['views'], 1500)
+        self.assertEqual(response[1]['id'], 2)
+        self.assertEqual(response[1]['views'], 1000)
+
+        async_loop(
+            self.session.execute(
+                update(Video).filter(Video.id == 3).values(created_at=datetime.utcnow() - timedelta(days=50))
+            )
+        )
+        async_loop(self.session.commit())
+        response = async_loop(trends())
+        self.assertEqual(len(response), 1)
+        self.assertEqual(response[0]['id'], 2)
+        self.assertEqual(response[0]['views'], 1000)
