@@ -1,6 +1,8 @@
 # Anti-YouTube: FastAPI
 
-<img src="https://github.com/Counter0021/Anti-YouTube-front-end/blob/logo/public/logo512.png?raw=true" style="margin: auto">
+<div style="text-align:center">
+  <img alt="Anti-YouTube: FastAPI" src="https://github.com/Counter0021/Anti-YouTube-front-end/blob/logo/public/logo512.png?raw=true">
+</div>
 
 ## Technology stack
 ![Python percent](https://img.shields.io/github/languages/top/Counter0021/Anti-YouTube-back-end.svg)
