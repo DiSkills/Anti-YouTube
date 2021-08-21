@@ -1,6 +1,7 @@
 from typing import List
 
 from fastapi import APIRouter, status, Depends, Form, UploadFile, File, Request
+from fastapi.responses import RedirectResponse
 
 from app.auth import service
 from app.auth.models import User
@@ -302,7 +303,7 @@ async def google_login(request: Request):
 
 @auth_router.get(
     '/google-auth',
-    response_model=Tokens,
+    response_class=RedirectResponse,
     description='Google auth',
     response_description='Google auth',
     name='Google auth',

@@ -3,6 +3,7 @@ from typing import Dict, Any, List, Union
 from uuid import uuid4
 
 from fastapi import status, HTTPException, UploadFile, Request
+from fastapi.responses import RedirectResponse
 from passlib.utils import generate_password
 from pyotp import TOTP, random_base32
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,7 +27,7 @@ from app.auth.security import get_password_hash, verify_password
 from app.auth.send_emails import send_new_account_email, send_reset_password_email, send_username_email, \
     send_about_change_password
 from app.auth.tokens import create_token, verify_refresh_token, create_password_reset_token, verify_password_reset_token
-from app.config import MEDIA_ROOT
+from app.config import MEDIA_ROOT, SERVER_HOST_FRONT_END
 from app.files import remove_file, write_file
 from app.videos.crud import history_crud, video_crud
 
@@ -517,7 +518,7 @@ async def toggle_2step_auth(db: AsyncSession, user: User) -> Dict[str, str]:
     return {'msg': qr_url}
 
 
-async def google_auth(db: AsyncSession, user: Dict[str, Union[str, bool, int]]) -> Dict[str, Union[str, int, bool]]:
+async def google_auth(db: AsyncSession, user: Dict[str, Union[str, bool, int]]) -> RedirectResponse:
     """
         Google social auth
         :param db: db
@@ -527,28 +528,35 @@ async def google_auth(db: AsyncSession, user: Dict[str, Union[str, bool, int]]) 
         :return: Tokens
         :rtype: dict
     """
-    if await user_crud.exists(db, email=user['email']):
+    if not await user_crud.exists(db, email=user['email']):
+        password = generate_password()
+
+        schema = RegisterUser(
+            password=password,
+            confirm_password=password,
+            username=user['name'],
+            email=user['email'],
+            about='',
+            send_message=True,
+        )
+
+        del schema.confirm_password
+
+        user = await user_crud.create(
+            db,
+            schema,
+            password=get_password_hash(schema.password),
+            is_active=True,
+        )
+    else:
         user = await user_crud.get(db, email=user['email'])
-        return {**create_token(user.id, user.username), 'user_id': user.id, 'is_superuser': user.is_superuser}
 
-    password = generate_password()
-
-    schema = RegisterUser(
-        password=password,
-        confirm_password=password,
-        username=user['name'],
-        email=user['email'],
-        about='',
-        send_message=True,
+    data = {
+        **create_token(user.id, user.username),
+        'user_id': user.id,
+        'is_superuser': 'true' if user.is_superuser else 'false',
+    }
+    return RedirectResponse(
+        f'{SERVER_HOST_FRONT_END}/google-auth?access_token={data["access_token"]}&refresh_token={data["refresh_token"]}'
+        f'&token_type={data["token_type"]}&user_id={data["user_id"]}&is_superuser={data["is_superuser"]}',
     )
-
-    del schema.confirm_password
-
-    user = await user_crud.create(
-        db,
-        schema,
-        password=get_password_hash(schema.password),
-        is_active=True,
-    )
-
-    return {**create_token(user.id, user.username), 'user_id': user.id, 'is_superuser': user.is_superuser}
