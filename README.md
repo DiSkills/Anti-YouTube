@@ -8,6 +8,7 @@
 ![Python percent](https://img.shields.io/github/languages/top/Counter0021/Anti-YouTube-back-end)
 ![Python version](https://img.shields.io/badge/python-3.8.10-green)
 ![API version](https://img.shields.io/badge/API-v0.3.3-orange)
+![Platform](https://img.shields.io/badge/os-linux_ubuntu-red)
 ![tests](https://img.shields.io/badge/tests-passing-success)
 ![Coverage](https://img.shields.io/badge/coverage-93%25-brightgreen)
 ![Open Source? Yes!](https://badgen.net/badge/Open%20Source%20%3F/Yes%21/blue?icon=github)
