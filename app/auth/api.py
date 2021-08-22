@@ -334,13 +334,7 @@ async def export(user: User = Depends(is_active)):
             return await service.export(session, user)
 
 
-@auth_router.websocket(
-    '/task-status',
-    status_code=status.HTTP_200_OK,
-    description='Progress',
-    response_description='Progress',
-    name='Progress',
-)
+@auth_router.websocket('/task-status')
 async def task_status(websocket: WebSocket):
     await websocket.accept()
 

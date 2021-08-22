@@ -55,7 +55,7 @@
       - [x] Celery send email
       - [ ] Feedbacks
       - [ ] Block video
-      - [ ] Export user data (websocket and celery)
+      - [x] Export user data (websocket and celery)
   - [x] Categories
     - [x] Get all
     - [x] Get
