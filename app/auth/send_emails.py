@@ -5,6 +5,24 @@ from app.config import SERVER_HOST_FRONT_END, PROJECT_NAME, EMAIL_TEMPLATES_DIR
 from app.send_emails import send_email
 
 
+def send_export_data(email_to: str, file_name: str) -> None:
+    project_name = PROJECT_NAME
+    subject = f'{project_name} - Export data'
+    with open(Path(EMAIL_TEMPLATES_DIR) / 'export_data.html') as f:
+        template_str = f.read()
+    send_email(
+        email_to=email_to,
+        subject_template=subject,
+        html_template=template_str,
+        environment={
+            'project_name': PROJECT_NAME,
+            'email': email_to,
+        },
+        attach=True,
+        file_name=file_name,
+    )
+
+
 def send_about_change_password(email_to: str, username: str, password: str) -> None:
     """
         Send about change password
