@@ -145,4 +145,6 @@ class Channel(UserPublic):
 
 
 class Tasks(BaseModel):
+    """ Tasks """
+
     task_id: str

@@ -1,5 +1,6 @@
 import json
 import time
+from typing import Dict, Any
 
 import emails
 from emails.template import JinjaTemplate
@@ -15,7 +16,8 @@ from app.config import (
     SMTP_PORT,
     SMTP_HOST,
     SMTP_PASSWORD,
-    TESTS, MEDIA_ROOT,
+    TESTS,
+    MEDIA_ROOT,
 )
 
 import os
@@ -82,7 +84,15 @@ def send_email(
 
 
 @celery.task(name='export_data', bind=True)
-def export_data(self, data):
+def export_data(self, data) -> Dict[str, Any]:
+    """
+        Export data
+        :param self: Task
+        :param data: Data
+        :type data: dict
+        :return: Result
+        :rtype: dict
+    """
     from app.auth.send_emails import send_export_data
 
     file_name = MEDIA_ROOT + data['username'] + '.json'

@@ -564,7 +564,16 @@ async def google_auth(db: AsyncSession, user: Dict[str, Union[str, bool, int]]) 
     )
 
 
-async def export(db: AsyncSession, user: User):
+async def export(db: AsyncSession, user: User) -> Dict[str, str]:
+    """
+        Export data
+        :param db: DB
+        :type db: AsyncSession
+        :param user: User
+        :type user: User
+        :return: Task ID
+        :rtype: dict
+    """
     user_data = await user_crud.export_data(db, id=user.id)
     videos = await get_channel_videos(db, user.id)
     history = await get_history(db, user)

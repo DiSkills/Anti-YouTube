@@ -6,6 +6,15 @@ from app.send_emails import send_email
 
 
 def send_export_data(email_to: str, file_name: str) -> None:
+    """
+        Send export data
+        :param email_to: Email
+        :type email_to: str
+        :param file_name: File name
+        :type file_name: str
+        :return: None
+        :rtype: None
+    """
     project_name = PROJECT_NAME
     subject = f'{project_name} - Export data'
     with open(Path(EMAIL_TEMPLATES_DIR) / 'export_data.html') as f:

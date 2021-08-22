@@ -90,12 +90,15 @@ class CreateHistory(BaseModel):
 
 
 class ExportComment(BaseModel):
+    """ Export comments """
+
     text: str
     created_at: datetime
     video_id: int
 
 
 class ExportData(UserPublic):
+    """ Export data """
 
     is_active: bool
     email: str
