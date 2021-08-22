@@ -14,6 +14,14 @@ class UserCRUD(CRUD[User, RegisterUser, UserUpdate]):
     """ User CRUD """
 
     async def export_data(self, db: AsyncSession, **kwargs) -> ModelType:
+        """
+            Export data
+            :param db: DB
+            :type db: AsyncSession
+            :param kwargs: kwargs
+            :return: Model
+            :rtype: ModelType
+        """
         query = await db.execute(
             select(self.model).options(
                 selectinload(self.model.comments),
