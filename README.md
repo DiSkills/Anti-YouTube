@@ -80,6 +80,7 @@
     - [x] Send email about new comment
 - [x] Deploy
   - [x] Docker
+  - [ ] Logging error to file and send email to admin
 
 
 ## `Installing`
