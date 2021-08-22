@@ -297,6 +297,7 @@ async def toggle_2step_auth(user: User = Depends(is_active)):
     description='Google login',
     response_description='Google login',
     name='Google login',
+    status_code=status.HTTP_200_OK,
 )
 async def google_login(request: Request):
     redirect_uri = 'http://localhost:8000/api/v1/auth/google-auth'
@@ -309,6 +310,7 @@ async def google_login(request: Request):
     description='Google auth',
     response_description='Google auth',
     name='Google auth',
+    status_code=status.HTTP_200_OK,
 )
 async def google_auth(request: Request):
     async with async_session() as session:
@@ -321,6 +323,10 @@ async def google_auth(request: Request):
 @auth_router.post(
     '/export',
     response_model=Tasks,
+    status_code=status.HTTP_200_OK,
+    description='Export data',
+    response_description='Export data',
+    name='Export data',
 )
 async def export(user: User = Depends(is_active)):
     async with async_session() as session:
@@ -328,7 +334,13 @@ async def export(user: User = Depends(is_active)):
             return await service.export(session, user)
 
 
-@auth_router.websocket('/task-status')
+@auth_router.websocket(
+    '/task-status',
+    status_code=status.HTTP_200_OK,
+    description='Progress',
+    response_description='Progress',
+    name='Progress',
+)
 async def task_status(websocket: WebSocket):
     await websocket.accept()
 
