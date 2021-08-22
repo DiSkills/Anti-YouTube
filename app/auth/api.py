@@ -5,7 +5,6 @@ from fastapi import APIRouter, status, Depends, Form, UploadFile, File, Request,
 from fastapi.responses import RedirectResponse
 
 from app.auth import service
-from app.auth.crud import user_crud
 from app.auth.models import User
 from app.auth.permission import is_active
 from app.auth.schemas import (
@@ -18,12 +17,12 @@ from app.auth.schemas import (
     ChangeUserDataResponse,
     ChangeUserData,
     Channel,
-    ChangePassword, Tasks,
+    ChangePassword,
+    Tasks,
 )
 from app.config import oauth
 from app.db import async_session
 from app.schemas import Message
-from app.tasks import export_data
 from app.videos.schemas import GetVideo, SubscriptionsVideos
 
 auth_router = APIRouter()
