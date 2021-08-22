@@ -571,4 +571,4 @@ async def export(db: AsyncSession, user: User):
     comments = [comment.__dict__ for comment in user_data.comments]
     data = ExportData(**{**user.__dict__, 'videos': videos, 'history': history, 'comments': comments}).dict()
     task = export_data.delay(data=data)
-    return task.id
+    return {'task_id': task.id}

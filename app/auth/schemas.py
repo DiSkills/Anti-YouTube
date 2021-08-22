@@ -142,3 +142,7 @@ class Channel(UserPublic):
     count_videos: int
     views: int
     is_following: Optional[int]
+
+
+class Tasks(BaseModel):
+    task_id: str

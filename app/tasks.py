@@ -85,7 +85,6 @@ def send_email(
 def export_data(self, data):
     from app.auth.send_emails import send_export_data
 
-    time.sleep(5)
     file_name = MEDIA_ROOT + data['username'] + '.json'
     with open(file_name, 'w') as file:
         json.dump(data, file)
@@ -94,6 +93,6 @@ def export_data(self, data):
     for video in range(total):
         i += 1
         self.update_state(state='PROGRESS', meta={'progress': 100 * i // total})
-        time.sleep(0.5)
+        time.sleep(1)
     send_export_data(data['email'], file_name)
     return {'progress': 100, 'result': data}
