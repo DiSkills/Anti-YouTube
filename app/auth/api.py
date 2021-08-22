@@ -319,11 +319,6 @@ async def google_auth(request: Request):
             return await service.google_auth(session, user)
 
 
-# @auth_router.post('/export')
-# async def export():
-#     task = export_data.delay()
-#     return task.id
-
 @auth_router.post('/export')
 async def export(user: User = Depends(is_active)):
     async with async_session() as session:

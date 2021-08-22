@@ -74,19 +74,11 @@ def send_email(
         smtp_options['password'] = SMTP_PASSWORD
     if not TESTS:
         if attach and file_name:
-            message.attach(data=open(file_name), filename=file_name)
+            message.attach(data=open(file_name), filename=file_name.split('/')[-1])
             remove_file(file_name)
 
         response = message.send(to=email_to, render=environment, smtp=smtp_options)
         logging.info(f'send email result: {response}')
-
-
-# @celery.task(name='export_data', bind=True)
-# def export_data(self):
-#     for i in range(50):
-#         self.update_state(state='PROGRESS', meta={'progress': 100 * i // 50})
-#         time.sleep(0.5)
-#     return {'progress': 100, 'result': 42}
 
 
 @celery.task(name='export_data', bind=True)
