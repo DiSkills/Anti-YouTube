@@ -1,9 +1,11 @@
 from typing import List
 
+from celery.result import AsyncResult
 from fastapi import APIRouter, status, Depends, Form, UploadFile, File, Request
 from fastapi.responses import RedirectResponse
 
 from app.auth import service
+from app.auth.crud import user_crud
 from app.auth.models import User
 from app.auth.permission import is_active
 from app.auth.schemas import (
@@ -21,6 +23,7 @@ from app.auth.schemas import (
 from app.config import oauth
 from app.db import async_session
 from app.schemas import Message
+from app.tasks import export_data
 from app.videos.schemas import GetVideo, SubscriptionsVideos
 
 auth_router = APIRouter()
@@ -314,3 +317,40 @@ async def google_auth(request: Request):
             token = await oauth.google.authorize_access_token(request)
             user = await oauth.google.parse_id_token(request, token)
             return await service.google_auth(session, user)
+
+
+# @auth_router.post('/export')
+# async def export():
+#     task = export_data.delay()
+#     return task.id
+
+@auth_router.post('/export')
+async def export(user: User = Depends(is_active)):
+    async with async_session() as session:
+        async with session.begin():
+            return await service.export(session, user)
+
+
+@auth_router.get('/task-status')
+async def task_status(task_id):
+    task = AsyncResult(task_id)
+    if task.status == 'PENDING':
+        response = {
+            'state': task.state,
+            'progress': 0,
+        }
+    elif task.status == 'FAILURE':
+        response = {
+            'state': task.state,
+            'progress': task.info.get('progress', 0),
+        }
+        if 'result' in task.info:
+            response['result'] = task.info['result']
+    else:
+        response = {
+            'state': task.state,
+            'progress': task.info.get('progress', 0),
+        }
+        if 'result' in task.info:
+            response['result'] = task.info['result']
+    return response

@@ -87,3 +87,19 @@ class CreateHistory(BaseModel):
 
     user_id: int
     video_id: int
+
+
+class ExportComment(BaseModel):
+    text: str
+    created_at: datetime
+    video_id: int
+
+
+class ExportData(UserPublic):
+
+    is_active: bool
+    email: str
+    two_auth: bool
+    videos: List[GetVideo]
+    history: List[GetVideo]
+    comments: List[ExportComment]

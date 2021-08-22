@@ -57,10 +57,10 @@ class User(Base, ModelMixin):
         backref=backref('subscribers', lazy='dynamic'),
         lazy='dynamic'
     )
-    videos: List[Video] = relationship(Video, backref='related_user', lazy='dynamic')
-    votes: List[Votes] = relationship(Votes, backref='related_user', lazy='dynamic')
+    videos: List[Video] = relationship(Video, backref='related_user')
+    votes: List[Votes] = relationship(Votes, backref='related_user')
     history: List[History] = relationship(History, backref='related_user')
-    comments: List[Comment] = relationship(Comment, backref='related_user', lazy='dynamic')
+    comments: List[Comment] = relationship(Comment, backref='related_user')
 
     def __str__(self):
         return f'{self.username}'

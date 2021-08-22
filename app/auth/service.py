@@ -29,7 +29,9 @@ from app.auth.send_emails import send_new_account_email, send_reset_password_ema
 from app.auth.tokens import create_token, verify_refresh_token, create_password_reset_token, verify_password_reset_token
 from app.config import MEDIA_ROOT, SERVER_HOST_FRONT_END
 from app.files import remove_file, write_file
+from app.tasks import export_data
 from app.videos.crud import history_crud, video_crud
+from app.videos.schemas import ExportData
 
 
 async def refresh(db: AsyncSession, schema: RefreshToken):
@@ -560,3 +562,13 @@ async def google_auth(db: AsyncSession, user: Dict[str, Union[str, bool, int]]) 
         f'{SERVER_HOST_FRONT_END}/google-auth?access_token={data["access_token"]}&refresh_token={data["refresh_token"]}'
         f'&token_type={data["token_type"]}&user_id={data["user_id"]}&is_superuser={data["is_superuser"]}',
     )
+
+
+async def export(db: AsyncSession, user: User):
+    user_data = await user_crud.export_data(db, id=user.id)
+    videos = await get_channel_videos(db, user.id)
+    history = await get_history(db, user)
+    comments = [comment.__dict__ for comment in user_data.comments]
+    data = ExportData(**{**user.__dict__, 'videos': videos, 'history': history, 'comments': comments}).dict()
+    task = export_data.delay(data=data)
+    return task.id

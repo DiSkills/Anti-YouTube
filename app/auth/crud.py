@@ -13,6 +13,14 @@ from app.auth.schemas import RegisterUser, UserUpdate, VerificationUUID
 class UserCRUD(CRUD[User, RegisterUser, UserUpdate]):
     """ User CRUD """
 
+    async def export_data(self, db: AsyncSession, **kwargs) -> ModelType:
+        query = await db.execute(
+            select(self.model).options(
+                selectinload(self.model.comments),
+            ).filter_by(**kwargs)
+        )
+        return query.scalars().first()
+
     async def count_followers(self, db: AsyncSession, pk: int) -> int:
         """
             Followers count

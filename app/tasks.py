@@ -1,8 +1,11 @@
+import time
+
 import emails
 from emails.template import JinjaTemplate
 
 import logging
 
+from app.auth.crud import user_crud
 from app.config import (
     EMAILS_ENABLED,
     EMAILS_FROM_EMAIL,
@@ -18,6 +21,10 @@ from app.config import (
 import os
 
 from celery import Celery
+
+from app.db import async_session
+from app.videos.crud import video_crud
+from tests import async_loop
 
 celery = Celery(__name__)
 celery.conf.broker_url = os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379")
@@ -60,3 +67,22 @@ def send_email(email_to: str, subject_template: str = '', html_template: str = '
         response = message.send(to=email_to, render=environment, smtp=smtp_options)
         logging.info(f'send email result: {response}')
 
+
+# @celery.task(name='export_data', bind=True)
+# def export_data(self):
+#     for i in range(50):
+#         self.update_state(state='PROGRESS', meta={'progress': 100 * i // 50})
+#         time.sleep(0.5)
+#     return {'progress': 100, 'result': 42}
+
+
+@celery.task(name='export_data', bind=True)
+def export_data(self, data):
+    time.sleep(5)
+    total = 10
+    i = 0
+    for video in range(total):
+        i += 1
+        self.update_state(state='PROGRESS', meta={'progress': 100 * i // total})
+        time.sleep(0.5)
+    return {'progress': 100, 'result': data}
