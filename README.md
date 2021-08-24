@@ -34,8 +34,8 @@
 ![NGINX](https://img.shields.io/badge/Nginx-009639?style=for-the-badge&logo=nginx&logoColor=white)
 
 ## TODO
-- [ ] Back-end
-  - [ ] Auth
+- [x] Back-end
+  - [x] Auth
       - [x] Register
       - [x] Activate
       - [x] Login
@@ -53,8 +53,6 @@
       - [x] 2-step auth
       - [x] Google auth
       - [x] Celery send email
-      - [ ] Feedbacks
-      - [ ] Block video
       - [x] Export user data (websocket and celery)
   - [x] Categories
     - [x] Get all
@@ -78,7 +76,7 @@
     - [x] Create comments
     - [x] Get comments
     - [x] Send email about new comment
-- [x] Deploy
+- [ ] Deploy
   - [x] Docker
   - [ ] Logging error to file and send email to admin
 
