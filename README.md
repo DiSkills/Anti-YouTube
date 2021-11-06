@@ -78,7 +78,7 @@
         - [x] Send email about new comment
 - [x] Deploy
     - [x] Docker
-    - [x] Logging error to file and send email to admin
+    - [x] Logging error to file
 
 
 ## `Installing`
