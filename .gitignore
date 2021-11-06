@@ -4,3 +4,4 @@
 /media/
 /app/config/config.docker.env
 /venv/
+/error.log
